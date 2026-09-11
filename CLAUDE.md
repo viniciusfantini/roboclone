@@ -53,9 +53,96 @@ custa dinheiro).
    baseada em HTTP polling, webhook, Telegram/e-mail ou serviço de
    terceiros — somam de centenas de ms a segundos.
 
+## Frente de trabalho ativa: "ler o Profit de origem por tela" (mesma máquina)
+
+Decisão de 11/09/2026: antes do problema de rede (opções acima, ainda não
+implementadas), surgiu uma necessidade mais imediata e **sem rede
+nenhuma**: o dono tem uma automação própria rodando num **servidor da
+B3**, que manda ordens via ProfitDLL numa conta real. As execuções dessa
+automação só aparecem localmente porque ele tem uma janela do Profit
+aberta, logada na MESMA conta (espelho visual, sem API — a DLL já está
+ocupada pela automação do servidor). O pedido: ler essa operação
+(compra/venda/reforço/alvo) na tela e replicar o comando (compra/venda/
+zerar) por atalho de teclado numa SEGUNDA janela do Profit, numa conta
+SIMULADORA — mesma técnica do "Copiar" do `b3_money_copy`
+(`4q-winfut/b3_money_copy`), só que a ORIGEM agora é lida da tela em vez
+de já ser conhecida internamente pelo motor.
+
+Investigado e decidido nesta sessão (ver `roboclone.exe`, pasta `src/`):
+
+- **Sem ProfitDLL local pra ler**: a conta de origem já está com sessão
+  ocupada pela automação do servidor.
+- **Sem UI Automation**: testado ao vivo (11/09/2026, ProfitPro 5.0.4.23)
+  — a grade "Executadas" é um `TGridView` Delphi customizado, zero
+  filhos/patterns acessíveis. Só sobra ler por PIXEL.
+- **Sem OCR de texto**: em vez de ler a grade "Executadas", a leitura usa
+  o indicador de posição do próprio Profit (badge "Qtd", ex. `1C`/`2V` —
+  ver `imagem/boleta.png`), comparando o bitmap inteiro contra 3
+  referências calibradas (vazio/comprado/vendido). Mudança de desenho em
+  11/09/2026: a 1ª versão lia o LADO de cada linha nova na grade e
+  inferia a posição contando localmente, mas o dono apontou que isso
+  dessincroniza se uma saída virar várias execuções parciais em vez de
+  uma só do tamanho da posição inteira — o badge de posição é a fonte da
+  verdade (só fica vazio quando a posição REALMENTE zerou), sem esse
+  risco.
+- **Linguagem: C++** — pedido explícito do dono foi "o que funciona mais
+  rápido com menos delay", e o app reaproveita a técnica de envio de
+  atalho já validada ao vivo no `b3_money_copy` (`PostMessage`/
+  `WM_SYSKEYDOWN`, não depende de foco — ver o README de lá).
+- **Escopo desta primeira versão: mesma máquina**, as duas janelas do
+  Profit (origem real + destino simulador) — a parte de rede (VPN/socket,
+  opções no topo deste arquivo) fica pra quando/se as contas forem para
+  máquinas diferentes.
+
+Detalhes de uso, lógica de sinal e limitações conhecidas: ver
+`README.md` nesta pasta. O envio de atalho via `PostMessage`
+(reconstruído a partir da documentação do `b3_money_copy`, não copiado de
+código já testado) ainda **não foi validado ao vivo** contra um Profit de
+verdade.
+
+**Teste ao vivo de 11/09/2026** (modo `debug`, dono testando na conta
+simuladora): achado que 1V→2V (reforço) não disparava nada. Causa:
+comparar o badge de posição INTEIRO contra a referência de "1V" falhava
+porque o dígito muda de forma (1→2). Corrigido separando em 2 regiões —
+badge inteiro só pra decidir FLAT vs não-flat, e uma região estreita só
+da LETRA (C/V, sem o número) pra decidir o lado, que não muda de forma
+com a quantidade. Calibração agora pede 4 cliques (badge inteiro +
+letra) em vez de 2. Debug também passou a mostrar o tamanho da posição
+(contador interno, não lido da tela) e o comando equivalente que seria
+mandado no `rodar`.
+
+**Teste ao vivo de 11/09/2026 (2º achado, `rodar` não mandava ALT+C/V/A
+nenhum)**: suspeita forte é que o picker de janela por clique
+(`GetAncestor(GA_ROOT)`) subia até o FRAME externo do Profit (app MDI),
+não até o painel MDI real que processa o atalho. Corrigido em
+`src/janela_alvo.cpp` pra subir só até o filho direto de uma janela
+`MDIClient`. Ainda não confirmado ao vivo se resolve sozinho — adicionado
+`roboclone.exe testaratalho` (testa o envio isolado, sem calibração) e um
+2º mecanismo de envio (`enviarAltTeclaComFoco`, `SendInput` com
+`SetForegroundWindow` — o que o `b3_money_copy` original validou em
+produção) como fallback caso o `PostMessage` continue sem efeito mesmo na
+janela certa.
+
+**Confirmado ao vivo (11/09/2026, via `testaratalho`)**: com a correção
+do picker MDI, os DOIS mecanismos de envio funcionaram (`PostMessage`
+sem foco E `SendInput` com foco) — dono confirmou preferência pelo sem
+foco (`enviarAltTeclaComEspacamento`, o que o `rodar` já usa).
+
+Ajustes finos depois da confirmação: tirada a exigência de digitar
+`SIMULADOR` antes de `rodar` (o dono está testando com origem e destino
+na MESMA janela do Profit por enquanto — só avisa no console quando
+detecta isso, não bloqueia mais); o espaçamento mínimo entre comandos
+agora é perguntado ao operador (`rodar`/`testaratalho`, ENTER = 200ms
+padrão) e é esperado sempre antes de qualquer envio (não só entre ordens
+em sequência), pra cobrir o caminho leitura→envio inteiro mesmo quando
+origem e destino são a mesma janela.
+
 ## Estado atual
 
-Repositório criado vazio; este `CLAUDE.md` foi o primeiro commit (via a
-sessão do `4q-winfut`, 11/09/2026) — só a definição do problema e as
-opções de arquitetura acima, nenhum código ainda. Próximo passo: decidir
-entre VPN+TCP direto vs. relay, e prototipar.
+Protótipo funcional (11/09/2026): `roboclone.exe`
+(`calibrar`/`debug`/`rodar`/`testaratalho`), ver seção acima e
+`README.md`. O envio de atalho (ambos os mecanismos) já foi validado ao
+vivo contra o Profit de verdade. Falta: um teste de ponta a ponta com
+origem e destino em janelas DIFERENTES (a validação até aqui foi com
+`testaratalho` isolado); depois, se/quando precisar, decidir entre
+VPN+TCP direto vs. relay pra levar isso pra duas máquinas.
