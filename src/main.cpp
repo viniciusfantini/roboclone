@@ -42,7 +42,6 @@ const char* CAMINHO_CALIBRACAO = "calibracao.cfg";
 constexpr int INTERVALO_POLL_MS = 10;
 constexpr int ESPERA_ACOMODAR_MS = 60;
 constexpr int TAMANHO_MAXIMO_POSICAO_PADRAO = 5;
-constexpr int RAIO_RELOCALIZAR_PX = 45; // vizinhanca ampla, mesma ideia de calibracao.cpp
 
 int perguntarDelayMs() {
     std::printf("\nEspacamento minimo entre comandos enviados, em ms (o Profit recusa com\n");
@@ -107,10 +106,14 @@ POINT centroRegiao(const RegiaoTela& r) {
 // naquele pedaco de tela agora nao e' mais a janela de ORIGEM esperada
 // (ex.: a janela de destino ficou por cima -- sem essa checagem, leria o
 // badge errado, podendo criar um loop lendo as proprias ordens que
-// mandou). Se o badge mudou mas nao bateu com nada na regiao atual,
-// tenta se RELOCALIZAR sozinho numa vizinhanca ampla ao redor (self-
-// healing -- ex.: a janela mexeu um pouco, ou o layout mudou por algum
-// motivo) antes de so' avisar e continuar.
+// mandou), OU se o badge mudou mas nao bateu com nenhuma referencia
+// (ex.: passou do nivel maximo calibrado) -- so' ignora e continua
+// esperando, NAO tenta relocalizar sozinho aqui (achado ao vivo,
+// 15/09/2026: relocalizar numa busca ampla pode achar por coincidencia
+// alguma posicao vizinha parecida com OUTRA referencia -- ex. "FLAT" --
+// e reportar uma mudanca de posicao que nao aconteceu de verdade. A
+// localizacao automatica ampla so' roda uma vez, no inicio da sessao,
+// ver localizarBadge() em calibracao.cpp).
 int aguardarProximaPosicao(CapturaRegiao& capBadge, const Calibracao& cal, HWND origemEsperada) {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALO_POLL_MS));
@@ -135,21 +138,8 @@ int aguardarProximaPosicao(CapturaRegiao& capBadge, const Calibracao& cal, HWND 
         auto posicao = classificar(capBadge, cal);
         if (posicao.has_value()) return *posicao;
 
-        std::printf("[aviso] badge mudou mas nao bateu com nenhuma referencia -- tentando "
-                    "relocalizar por perto...\n");
-        RegiaoTela r = capBadge.regiao();
-        ResultadoBusca achado = buscarBadge(centroRegiao(r), r.largura, r.altura,
-                                             cal.referencias, RAIO_RELOCALIZAR_PX);
-        if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia) {
-            capBadge = CapturaRegiao(achado.regiao);
-            capBadge.capturar();
-            std::printf("[info] relocalizado automaticamente em x=%d y=%d.\n",
-                        achado.regiao.x, achado.regiao.y);
-            return achado.quantidade;
-        }
-
-        std::printf("[aviso] nao consegui relocalizar -- ignorado (pode ser ruido de campo "
-                    "vizinho)\n");
+        std::printf("[aviso] badge mudou mas nao bateu com nenhuma referencia dentro da tolerancia "
+                    "-- ignorado (pode ser ruido de campo vizinho, ou posicao alem do calibrado)\n");
     }
 }
 

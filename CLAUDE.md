@@ -434,6 +434,21 @@ comparacao (`largura x altura`) dentro desse buffer JA' EM MEMORIA via
 sem tocar a tela de novo pra cada posicao. Termina em poucos
 milissegundos em vez de dezenas de segundos.
 
+**Removida auto-relocalizacao durante a leitura continua (15/09/2026)**:
+dono testou `debug` e a auto-relocalizacao (adicionada na mudanca
+anterior) deu pau na pratica -- log real: calibrou ate' nivel 5,
+reforcou ate' "COMPRADO 6" (alem do calibrado, nao bate com nada de
+verdade), a busca ampla (45px) "achou" por coincidencia um ponto vizinho
+parecido com a referencia "FLAT" e reportou `COMPRADO 6 -> FLAT`
+(zeragem que nunca aconteceu). Pedido do dono: nao precisa disso -- se
+nao reconhecer nada, so' ignorar e continuar esperando.
+
+Removida a chamada a `buscarBadge()` dentro de `aguardarProximaPosicao()`
+(main.cpp) -- volta a so' avisar "nao bateu com nenhuma referencia" e
+continuar o loop, sem tentar adivinhar uma posicao nova. A localizacao
+automatica ampla continua existindo, mas so' roda UMA vez, no inicio da
+sessao (`localizarBadge()`), nao mais durante a leitura continua.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

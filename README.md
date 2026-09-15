@@ -226,12 +226,20 @@ Replay, o zoom, ou só a janela que deslocou tudo.
    precisa ser exato, só perto de onde o badge está agora — e tenta a
    mesma busca ampla a partir desse ponto.
 
-**Também acontece em tempo real, durante a leitura** (`aguardarProximaPosicao`
-em `main.cpp`): se o badge mudar mas não bater com nenhuma referência na
-posição atual, o programa tenta se relocalizar sozinho na mesma
-vizinhança ampla antes de só avisar e continuar — então ligar/desligar o
-Replay **no meio** de uma sessão de `debug`/`rodar` já em andamento
-também é coberto, sem precisar reiniciar nada.
+**Só roda uma vez, no início da sessão — NÃO durante a leitura contínua**
+(achado ao vivo, 15/09/2026): uma versão anterior tentava relocalizar
+sozinho toda vez que o badge mudava mas não batia com nada, pra cobrir
+ligar/desligar o Replay no meio da sessão. Não deu certo: numa busca
+AMPLA (45px), é fácil achar por coincidência algum ponto vizinho
+parecido com OUTRA referência — ex., o dono calibrou até nível 5, foi
+até "COMPRADO 6" (além do calibrado, então não bate com nada de
+verdade), e a relocalização "achou" um ponto vizinho parecido com
+"FLAT", reportando uma zeragem que nunca aconteceu. Removido: agora, se
+o badge mudar mas não bater com nenhuma referência durante a leitura
+contínua (`aguardarProximaPosicao` em `main.cpp`), o programa só avisa e
+continua esperando — sem tentar adivinhar uma posição nova. Se isso
+acontecer com frequência, o motivo mais comum é ter passado do nível
+máximo calibrado (recalibre com um nível maior) — ver limitações abaixo.
 
 Nenhuma pergunta sobre Replay existe mais em lugar nenhum do programa.
 
