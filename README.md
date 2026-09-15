@@ -201,9 +201,35 @@ mais preciso pro badge.
    automaticamente — não precisa recalibrar toda vez que ligar/desligar o
    Replay.
 
-**Precisa recalibrar se**: a janela do Profit mudar de posição na tela,
-for redimensionada, ou o zoom/tema mudar (a região é guardada em
-coordenadas absolutas de tela).
+**Precisa recalibrar (a construção completa 1..N dos dois lados) se**: a
+janela do Profit for redimensionada, ou o zoom/tema mudar (o formato do
+badge muda, as referências capturadas deixam de bater).
+
+**Só mudou de LUGAR na tela (mesmo tamanho/zoom/tema)?** Não precisa
+refazer a construção toda — ver "reancorar rápido" abaixo, disponível no
+início do `debug` e do `rodar`.
+
+### Reancorar rápido a posição (sem recalibrar tudo de novo)
+
+`debug` e `rodar` perguntam, logo depois de carregar a calibração, se
+você quer confirmar/reancorar a posição do badge. Útil se reabriu o
+Profit e a janela ficou em lugar diferente na tela — reaproveita as
+referências já calibradas (não refaz a construção 1..N contratos),
+**só atualiza onde olhar**:
+
+1. Responde "s".
+2. Clica só no canto superior esquerdo do badge (o tamanho já está
+   calibrado, não pede o canto inferior direito de novo).
+3. O programa mostra o que LERIA nessa nova posição (ex. "COMPRADO 1") e
+   pergunta se bate com o que está aparecendo na tela.
+4. Se sim, usa essa posição pro resto da sessão, e pergunta se quer
+   salvar pra próxima vez (não precisa reancorar de novo depois).
+5. Se não, mantém a posição calibrada antes e recomenda rodar `calibrar`
+   completo.
+
+Dá pra fazer esse passo com o **Replay ligado antes do pregão abrir**,
+mostrando um estado que não seja flat (ex. "1C") — assim a conferência
+do passo 3 é contra um badge com conteúdo de verdade, não só vazio.
 
 ### `debug` (usar antes do `rodar`, pra validar a leitura)
 
@@ -312,8 +338,10 @@ recalibre apontando uma área mais exclusivamente amarela da barra.
 ## Limitações conhecidas / próximos passos
 
 - Calibração é em coordenadas absolutas de tela — quebra se a janela de
-  origem mover. Melhoria futura: capturar relativo ao client area da
-  janela (`GetClientRect`/`ClientToScreen`), recalculando a cada poll.
+  origem mover (mitigado pelo "reancorar rápido", ver acima, mas ainda é
+  manual). Melhoria futura: capturar relativo ao client area da janela
+  (`GetClientRect`/`ClientToScreen`), recalculando a cada poll, pra não
+  precisar nem do passo manual de reancorar.
 - Posição além do nível máximo calibrado (ex. 8 contratos, calibrado só
   até 7) não bate com nenhuma referência — fica ignorada com aviso no
   console em vez de agir errado. Recalibrar com um nível maior resolve.

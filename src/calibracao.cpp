@@ -51,6 +51,13 @@ bool perguntarSimNao(const std::string& pergunta) {
     return !linha.empty() && (linha[0] == 's' || linha[0] == 'S');
 }
 
+std::string formatarQuantidade(int q) {
+    if (q == 0) return "FLAT";
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%s %d", q > 0 ? "COMPRADO" : "VENDIDO", std::abs(q));
+    return buf;
+}
+
 // mostra a instrucao e fica vigiando o badge sozinho -- assim que
 // detectar mudanca (o operador fez a acao pedida), espera acomodar e
 // recaptura, sem precisar de ENTER. Devolve false se ESC for apertado
@@ -210,6 +217,62 @@ bool rodarCalibracao(Calibracao& out) {
                         ">> NAO sera' aplicado (desligado pra essa calibracao).\n");
             out.temReplay = false;
         }
+    }
+
+    return true;
+}
+
+bool confirmarOuReancorarPosicao(Calibracao& cal, const std::string& caminhoCalibracao) {
+    bool quer = perguntarSimNao(
+        "Confirmar/reancorar rapido a posicao do badge antes de comecar?\n"
+        "Util se reabriu o Profit e a janela mudou de lugar -- reaproveita as\n"
+        "referencias JA calibradas (nao refaz 1..N contratos), so' atualiza\n"
+        "ONDE olhar na tela. Pode fazer isso com o Replay ligado antes do\n"
+        "pregao abrir, mostrando um estado conhecido (ex. \"1C\") pra conferir");
+    if (!quer) return true;
+
+    POINT novoTopo = aguardarClique(
+        "canto SUPERIOR ESQUERDO do badge de posicao AGORA (o tamanho ja' esta' "
+        "calibrado, so' a posicao pode ter mudado)");
+    if (novoTopo.x < 0 && novoTopo.y < 0) {
+        std::printf(">> cancelado, mantendo a posicao calibrada antes.\n");
+        return true;
+    }
+
+    RegiaoTela novaRegiao = cal.regiaoBadge;
+    novaRegiao.x = novoTopo.x;
+    novaRegiao.y = novoTopo.y;
+
+    CapturaRegiao cap(novaRegiao);
+    if (!cap.capturar()) {
+        std::printf(">> falha ao capturar -- mantendo a posicao calibrada antes.\n");
+        return true;
+    }
+
+    long long menor = -1;
+    int quantidade = 0;
+    for (const auto& ref : cal.referencias) {
+        long long d = cap.diferencaPara(ref.bitmap);
+        if (menor < 0 || d < menor) { menor = d; quantidade = ref.quantidade; }
+    }
+
+    bool reconhecido = (menor >= 0 && menor <= cal.tolerancia);
+    std::printf(">> com essa posicao, a leitura agora seria: %s (diferenca=%lld, tolerancia=%lld)\n",
+                reconhecido ? formatarQuantidade(quantidade).c_str() : "NENHUMA (nao bateu com nada)",
+                menor, cal.tolerancia);
+
+    bool certo = perguntarSimNao("Essa leitura bate com o que esta' aparecendo na tela agora");
+    if (!certo) {
+        std::printf(">> mantendo a posicao calibrada antes -- rode \"calibrar\" de novo se precisar.\n");
+        return true;
+    }
+
+    cal.regiaoBadge = novaRegiao;
+    std::printf(">> posicao atualizada pra essa sessao.\n");
+
+    if (perguntarSimNao("Salvar essa posicao atualizada pra proxima vez")) {
+        if (salvarCalibracao(cal, caminhoCalibracao)) std::printf(">> salvo em %s.\n", caminhoCalibracao.c_str());
+        else std::printf(">> falha ao salvar.\n");
     }
 
     return true;

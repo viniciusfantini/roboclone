@@ -222,6 +222,7 @@ int modoCalibrar() {
 int modoDebug() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
+    if (!confirmarOuReancorarPosicao(cal, CAMINHO_CALIBRACAO)) return 1;
 
     HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera' lida)");
     if (!origem) {
@@ -269,6 +270,7 @@ int modoDebug() {
 int modoRodar() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
+    if (!confirmarOuReancorarPosicao(cal, CAMINHO_CALIBRACAO)) return 1;
 
     HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera' lida)");
     if (!origem) {

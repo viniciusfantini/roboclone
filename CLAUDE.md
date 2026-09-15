@@ -222,6 +222,18 @@ avançando pro próximo nível sozinho. Só o primeiro passo (confirmar que
 está flat) continua pedindo ENTER, porque não há "mudança" pra esperar
 se a posição já estiver zerada desde antes.
 
+**Reancorar rápido a posição (15/09/2026)**: dono pediu um jeito de só
+reconfirmar/reposicionar o badge (ex. se o Profit reabrir em lugar
+diferente na tela) sem precisar refazer a calibração completa (1..N
+contratos dos dois lados) — como as referências de bitmap não dependem
+de posição de tela, só de aparência, dá pra reaproveitá-las. Implementado
+`confirmarOuReancorarPosicao()` em `calibracao.cpp`: pergunta opcional no
+início de `debug`/`rodar`, pede só o canto superior esquerdo (reaproveita
+o tamanho já calibrado), mostra o que LERIA ali e pede confirmação
+sim/não antes de adotar a nova posição, com opção de salvar pra próxima
+vez. Pensado pra poder ser feito com o Replay ligado antes do pregão
+abrir, mostrando um estado tipo "1C" (não flat) pra conferir de verdade.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`
