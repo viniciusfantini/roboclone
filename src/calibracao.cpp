@@ -53,17 +53,26 @@ bool rodarCalibracao(Calibracao& out) {
     std::printf("Antes de comecar: deixe a janela do Profit aberta, mostrando o\n");
     std::printf("painel com o indicador de posicao \"Qtd\" (o badge tipo \"1C\"/\"2V\"\n");
     std::printf("-- ver imagem/boleta.png), do jeito que vai ficar durante o pregao.\n");
-    std::printf("Aponte SO' pro badge \"Qtd\" -- nao inclua campos vizinhos que mudam\n");
+
+    int nivelMaximo = perguntarNivelMaximo();
+
+    std::printf("\nAponte SO' pro badge \"Qtd\" -- nao inclua campos vizinhos que mudam\n");
     std::printf("sozinhos com o preco (ex.: \"Resultado\", \"Res. Aberto\"), senao\n");
-    std::printf("qualquer variacao de preco vira um falso reforco.\n");
+    std::printf("qualquer variacao de preco vira uma leitura que nao bate com nada.\n");
+    if (nivelMaximo >= 10) {
+        std::printf("\n>> ATENCAO: o badge fica um pouco mais LARGO quando a quantidade\n"
+                    ">> passa de 1 digito (10 em diante) -- achado ao vivo, 15/09/2026.\n"
+                    ">> A regiao que voce vai desenhar agora e' FIXA (nao redimensiona\n"
+                    ">> sozinha depois), entao desenhe um pouco mais larga do que o\n"
+                    ">> badge aparenta AGORA (provavelmente com 1 digito ou vazio), com\n"
+                    ">> folga suficiente pra caber \"%dC\" sem cortar.\n", nivelMaximo);
+    }
 
     POINT b1 = aguardarClique("canto SUPERIOR ESQUERDO do badge de posicao (numero + letra)");
     if (b1.x < 0 && b1.y < 0) return false;
     POINT b2 = aguardarClique("canto INFERIOR DIREITO do badge");
     if (b2.x < 0 && b2.y < 0) return false;
     out.regiaoBadge = regiaoDeDoisPontos(b1, b2);
-
-    int nivelMaximo = perguntarNivelMaximo();
 
     CapturaRegiao cap(out.regiaoBadge);
     out.referencias.clear();

@@ -152,13 +152,19 @@ roboclone.exe rodar
 
 ### `calibrar`
 
-1. Clique no canto superior esquerdo, depois no inferior direito, do
+1. Responde até quantos contratos calibrar de cada lado (ENTER usa o
+   padrão, 5 — ou seja, reconhece de 1 a 5 comprado e de 1 a 5 vendido).
+2. Clique no canto superior esquerdo, depois no inferior direito, do
    **badge inteiro** de posição ("Qtd", o retângulo tipo `1C` — ver
    `imagem/boleta.png`). Aponte SÓ pro badge — não inclua campos vizinhos
    que mudam sozinhos com o preço (ex. "Resultado", "Res. Aberto"), senão
-   qualquer variação de preço vira leitura falsa.
-2. Responde até quantos contratos calibrar de cada lado (ENTER usa o
-   padrão, 5 — ou seja, reconhece de 1 a 5 comprado e de 1 a 5 vendido).
+   qualquer variação de preço vira leitura falsa. **Se o nível máximo for
+   10 ou mais**: o badge fica um pouco mais LARGO com 2 dígitos (achado
+   ao vivo, 15/09/2026) — como a região é fixa (não redimensiona
+   sozinha depois), desenhe-a com folga mesmo que agora o badge esteja
+   mostrando só 1 dígito ou vazio, senão o "10" pode ficar cortado
+   quando a posição passar de 9. O programa avisa isso na tela quando
+   você pedir nível ≥ 10.
 3. Confirma (ENTER) com a posição **zerada/flat**.
 4. Compra 1 contrato a mercado, confirma (ENTER) — repete até o nível
    máximo escolhido (compra mais 1 a cada vez).

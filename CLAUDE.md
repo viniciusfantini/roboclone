@@ -203,6 +203,15 @@ o Replay está ligado (comparando a cor de uma área calibrada) e trocam a
 região de leitura automaticamente, sem precisar recalibrar toda vez que
 ligar/desligar o Replay.
 
+**Badge mais largo com 2 dígitos (15/09/2026)**: dono relatou que passando
+de 10 contratos o badge de posição fica um pouco mais largo (cabe o 2º
+dígito). Como a região capturada é FIXA (definida no clique da
+calibração, não redimensiona sozinha depois), isso podia cortar o "10"
+se a região fosse desenhada justa no tamanho de 1 dígito. Corrigido só
+por orientação (sem mudança de lógica): `calibrar` agora pergunta o
+nível máximo ANTES de pedir os cliques do badge, e avisa explicitamente
+pra desenhar a região com folga quando o nível for ≥ 10.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`
