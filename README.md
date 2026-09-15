@@ -235,6 +235,15 @@ também é coberto, sem precisar reiniciar nada.
 
 Nenhuma pergunta sobre Replay existe mais em lugar nenhum do programa.
 
+**Desempenho da busca (achado ao vivo, 15/09/2026)**: a primeira versão
+capturava a tela (BitBlt) uma vez POR POSIÇÃO candidata — pra um raio de
+45px isso é 8281 capturas separadas, cada uma com overhead de sistema,
+levando dezenas de segundos e parecendo travado ("buscando
+infinitamente"). Corrigido: captura a área de busca inteira **uma vez
+só** e desliza a janela de comparação dentro desse buffer já em memória
+(só `memcpy` + soma de diferenças, sem tocar a tela de novo) — termina
+em poucos milissegundos.
+
 ### `debug` (usar antes do `rodar`, pra validar a leitura)
 
 Não manda nenhum atalho — em vez de mandar ordem, escreve num bloco de

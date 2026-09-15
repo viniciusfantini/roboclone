@@ -418,6 +418,22 @@ sessao -- tinham problema real no uso ao vivo):
   tinha um bug fazendo).
 - Nenhuma pergunta sobre Replay existe mais em lugar nenhum do fluxo.
 
+**Busca automatica travando/lenta -- corrigido pra 1 captura so'
+(15/09/2026)**: dono reportou "esta buscando infinitamente" testando a
+localizacao automatica. Causa: `buscarBadge()` fazia um `BitBlt` (via
+`CapturaRegiao` nova) POR POSICAO candidata -- pra raio 45px isso e'
+(2*45+1)^2 = 8281 capturas de tela separadas, cada uma com overhead real
+de GDI (`GetDC`/`CreateCompatibleDC`/`CreateCompatibleBitmap`), levando
+dezenas de segundos. Nao era um loop infinito de verdade, so' lento
+demais pra parecer terminado.
+
+Corrigido: `buscarBadge()` agora captura a area de busca inteira (o raio
+todo) numa UNICA `CapturaRegiao`/`BitBlt`, e desliza a janela de
+comparacao (`largura x altura`) dentro desse buffer JA' EM MEMORIA via
+`extrairSubImagem()` (so' `memcpy` de cada linha) + `diferencaEntre()` --
+sem tocar a tela de novo pra cada posicao. Termina em poucos
+milissegundos em vez de dezenas de segundos.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -99,19 +100,54 @@ bool aguardarMudancaBadge(CapturaRegiao& cap, const std::string& instrucao) {
 
 } // namespace
 
+namespace {
+
+// copia a sub-janela (largura x altura) que comeca em (offX,offY) de
+// dentro de um buffer BGRA maior (bufferLargura de largura, top-down),
+// pra comparar contra as referencias (que tem esse mesmo tamanho).
+std::vector<BYTE> extrairSubImagem(const std::vector<BYTE>& bufferGrande, int bufferLargura,
+                                    int offX, int offY, int largura, int altura) {
+    std::vector<BYTE> sub((size_t)largura * altura * 4);
+    for (int linha = 0; linha < altura; ++linha) {
+        const BYTE* origem = bufferGrande.data() + ((size_t)(offY + linha) * bufferLargura + offX) * 4;
+        BYTE* destino = sub.data() + (size_t)linha * largura * 4;
+        std::memcpy(destino, origem, (size_t)largura * 4);
+    }
+    return sub;
+}
+
+} // namespace
+
+// achado ao vivo, 15/09/2026: a 1a versao capturava a tela (BitBlt) UMA
+// VEZ POR POSICAO candidata -- pra um raio de 45px isso e' (2*45+1)^2 =
+// 8281 capturas separadas, cada uma com overhead de GDI (GetDC/
+// CreateCompatibleDC/CreateCompatibleBitmap), levando dezenas de
+// segundos e parecendo travado. Corrigido: captura a area de busca
+// INTEIRA de uma vez so' (1 BitBlt) e desliza a janela de comparacao
+// dentro desse buffer JA' EM MEMORIA -- so' memcpy + soma de diferencas,
+// sem tocar a tela de novo. Termina em poucos milissegundos.
 ResultadoBusca buscarBadge(POINT centro, int largura, int altura,
                             const std::vector<ReferenciaBadge>& referencias, int raioPx) {
     ResultadoBusca melhor;
-    for (int dy = -raioPx; dy <= raioPx; ++dy) {
-        for (int dx = -raioPx; dx <= raioPx; ++dx) {
-            RegiaoTela regiao = regiaoDoCentro(POINT{centro.x + dx, centro.y + dy}, largura, altura);
-            CapturaRegiao cap(regiao);
-            if (!cap.capturar()) continue;
+
+    RegiaoTela areaAmpla;
+    areaAmpla.x = centro.x - largura / 2 - raioPx;
+    areaAmpla.y = centro.y - altura / 2 - raioPx;
+    areaAmpla.largura = largura + 2 * raioPx;
+    areaAmpla.altura = altura + 2 * raioPx;
+
+    CapturaRegiao capGrande(areaAmpla);
+    if (!capGrande.capturar()) return melhor;
+    const std::vector<BYTE>& bufferGrande = capGrande.pixelsBrutos();
+
+    for (int dy = 0; dy <= 2 * raioPx; ++dy) {
+        for (int dx = 0; dx <= 2 * raioPx; ++dx) {
+            std::vector<BYTE> sub = extrairSubImagem(bufferGrande, areaAmpla.largura, dx, dy, largura, altura);
             for (const auto& ref : referencias) {
-                long long d = cap.diferencaPara(ref.bitmap);
+                long long d = diferencaEntre(sub, ref.bitmap);
                 if (melhor.diferenca < 0 || d < melhor.diferenca) {
                     melhor.diferenca = d;
-                    melhor.regiao = regiao;
+                    melhor.regiao = RegiaoTela{ areaAmpla.x + dx, areaAmpla.y + dy, largura, altura };
                     melhor.quantidade = ref.quantidade;
                 }
             }
