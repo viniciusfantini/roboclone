@@ -303,6 +303,30 @@ operar na janela normal), o desconto do deslocamento acontece do jeito
 certo mesmo assim, porque a formula `ajusteReplay()` já cobria esse caso
 -- só faltava a segunda pergunta existir de verdade.
 
+**Replay pode ligar/desligar NO MEIO da sessão -- vigiar as duas
+posições (15/09/2026)**: dono testou o fluxo anterior (pergunta "vai
+continuar com Replay ou ir pra janela normal", decide 1x por sessão) e
+reportou que não funcionou: "leu a badge corretamente, mas quando tirei
+do replay não leu". Causa raiz: ele liga o `debug`/`rodar` ainda no
+Replay (antes do pregão) e desliga o Replay **no meio da mesma sessão**
+(quando o mercado abre), sem reiniciar o programa -- invalidando a
+suposição anterior de que "Replay só é usado antes do pregão, nunca
+liga/desliga no meio de uma sessão real" (essa suposição já tinha
+motivado remover a detecção contínua por cor uma sessão atrás; agora
+ficou provado que a PREMISSA estava errada, não a implementação).
+
+Corrigido sem voltar à detecção por cor (que tinha seu próprio bug):
+como já comparamos contra referências exatas por quantidade, dá pra
+simplesmente vigiar as DUAS posições possíveis (`cal.regiaoBadge` e
+`regiaoAlternativaReplay(cal)`, nova função em `calibracao.cpp`) ao
+mesmo tempo, usando qual delas bater com alguma referência -- sem
+precisar saber ou perguntar em qual estado o Replay está. Nova classe
+`LeitorPosicao` em `main.cpp` substitui a função livre
+`aguardarProximaPosicao` + `CapturaRegiao` avulsa, encapsulando 1 ou 2
+`CapturaRegiao` (a segunda só se `cal.temReplay`). `prepararRegiaoDeLeitura()`
+voltou a ser `void` -- só cuida do reancorar agora, não decide mais "modo
+de operação da sessão" (pergunta removida, ficou desnecessária).
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

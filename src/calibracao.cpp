@@ -270,17 +270,19 @@ bool rodarCalibracao(Calibracao& out) {
     return true;
 }
 
-RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao) {
-    // duas perguntas separadas (achado 15/09/2026: sao coisas diferentes)
-    // -- ambas UMA vez por sessao, nao ao vivo durante a leitura:
-    //   1) "Replay esta' ligado AGORA?" -- so' pra interpretar certo o
-    //      clique do reancorar abaixo (pode ser conveniente reancorar
-    //      vendo o Replay, ex. mostrando "1C", mesmo que va operar na
-    //      janela normal depois).
-    //   2) mais abaixo, "vai operar essa sessao pelo Replay ou pela
-    //      janela normal?" -- essa e' a que realmente decide a regiao de
-    //      leitura usada no debug/rodar, e pode ser DIFERENTE da resposta
-    //      da 1.
+RegiaoTela regiaoAlternativaReplay(const Calibracao& cal) {
+    RegiaoTela r = cal.regiaoBadge;
+    r.y += cal.calibradoComReplayLigado ? -cal.deslocamentoReplayY : cal.deslocamentoReplayY;
+    return r;
+}
+
+void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao) {
+    // pergunta "Replay esta' ligado AGORA?" so' pra interpretar certo o
+    // clique do reancorar abaixo (pode ser conveniente reancorar vendo o
+    // Replay, ex. mostrando "1C") -- nao decide mais o modo de operacao
+    // da sessao inteira (ver comentario no .h: o dono liga/desliga o
+    // Replay NO MEIO da sessao, entao main.cpp vigia as duas posicoes
+    // possiveis ao mesmo tempo em vez de fixar uma so' aqui).
     bool replayAgora = cal.temReplay &&
         perguntarSimNao("O modo Replay esta' LIGADO agora nessa janela de origem?");
 
@@ -340,20 +342,11 @@ RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCa
         }
     }
 
-    // decide o modo de operacao da sessao INTEIRA (debug/rodar) -- pode
-    // ser diferente do 'replayAgora' de cima (ex.: reancorou vendo o
-    // Replay, mas agora vai operar na janela normal a partir daqui).
-    bool operarComReplay = replayAgora;
     if (cal.temReplay) {
-        operarComReplay = perguntarSimNao(
-            "Pra essa sessao (leitura continua a partir de agora), vai "
-            "CONTINUAR com o Replay ligado, ou vai pra janela NORMAL "
-            "(Replay desligado, pra operar de verdade)? Responda nao pra "
-            "janela normal");
-        std::printf(">> lendo pela janela %s.\n", operarComReplay ? "com Replay" : "NORMAL (sem Replay)");
+        std::printf(">> Replay tem deslocamento calibrado (%dpx) -- a leitura vai vigiar as\n"
+                    ">> DUAS posicoes possiveis (com e sem Replay) e usar automaticamente\n"
+                    ">> qual delas bater com alguma referencia. Pode ligar/desligar o\n"
+                    ">> Replay a qualquer momento durante a sessao, sem precisar reiniciar.\n",
+                    cal.deslocamentoReplayY);
     }
-
-    RegiaoTela regiaoAtiva = cal.regiaoBadge;
-    regiaoAtiva.y += ajusteReplay(operarComReplay, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
-    return regiaoAtiva;
 }
