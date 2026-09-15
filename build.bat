@@ -11,6 +11,7 @@ cl /nologo /EHsc /std:c++17 /O2 /DNOMINMAX /Fe:"%~dp0roboclone.exe" ^
    "%~dp0src\calibracao.cpp" ^
    "%~dp0src\entrada.cpp" ^
    "%~dp0src\escrever_texto.cpp" ^
+   "%~dp0src\janela_teste.cpp" ^
    user32.lib gdi32.lib ole32.lib oleaut32.lib uuid.lib /link /MANIFEST:EMBED
 del "%~dp0*.obj" >nul 2>&1
 echo.

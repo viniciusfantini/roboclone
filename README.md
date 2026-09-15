@@ -224,6 +224,35 @@ O `testaratalho` também pergunta esse espaçamento antes de começar — só
 vale pros comandos `c`/`v`/`a` (via `PostMessage`); `fc`/`fv`/`fa` (via
 `SendInput` com foco) não usam esse espaçamento.
 
+**Janela de teste durante o `rodar`**: assim que a leitura começa, abre
+uma janelinha com 3 botões — **Compra (ALT+C)**, **Venda (ALT+V)**,
+**Zerar (ALT+A)** — que mandam o atalho na hora pra janela de DESTINO
+escolhida, com o mesmo espaçamento configurado, sem parar a leitura
+automática (rodam em threads separadas). Útil pra confirmar a qualquer
+momento que o atalho ainda está chegando na janela certa. Fechar essa
+janela encerra o `rodar` (junto com CTRL+C no console). Não é "always on
+top" (achado ao vivo, 15/09/2026: sendo topmost ela podia cair em cima do
+pedaço de tela calibrado da origem e travar a leitura pra sempre) e nasce
+no canto inferior direito da tela — se mesmo assim cobrir alguma janela
+do Profit, clique na janela do Profit pra trazê-la de volta pra cima.
+
+## Trava de segurança: tamanho máximo de posição
+
+**Testar com origem e destino na MESMA janela cria um loop de verdade**:
+cada atalho mandado executa uma ordem real ali, que muda a posição, que é
+lida de novo como um novo sinal, que manda outro atalho — sem limite.
+Isso não é bug de calibração, é matemática — só acontece porque as duas
+janelas são a mesma. Pra validar o ciclo completo (leitura + envio)
+de verdade, use duas janelas: uma só de origem (só você opera nela
+manualmente) e outra só de destino (só recebe atalho).
+
+Como rede de segurança pra esse (e qualquer outro) cenário de loop, o
+`rodar` pergunta um **tamanho máximo de posição** (ENTER usa o padrão, 5)
+— se o contador interno passar disso, o envio automático **para**
+imediatamente (a leitura continua rodando, mas não manda mais atalho
+sozinho) e avisa bem visível no console. Os botões da janela de teste
+continuam funcionando normalmente pra você zerar manualmente.
+
 ## Limitações conhecidas / próximos passos
 
 - Calibração é em coordenadas absolutas de tela — quebra se a janela de

@@ -137,12 +137,31 @@ padrão) e é esperado sempre antes de qualquer envio (não só entre ordens
 em sequência), pra cobrir o caminho leitura→envio inteiro mesmo quando
 origem e destino são a mesma janela.
 
+**Teste ao vivo de 15/09/2026 (loop de posição até 27 contratos)**: dono
+testou `rodar` com origem e destino na MESMA janela — o contador de
+tamanho subiu até 27 sozinho (contra 3 reais na conta), porque cada
+atalho mandado executa ordem de verdade ali, que muda a posição, que é
+lida de novo como sinal novo, que manda outro atalho. **Não é bug de
+calibração, é consequência matemática de origem == destino** — só um
+teste de ponta a ponta com duas janelas diferentes valida o ciclo
+completo de verdade. Duas correções ainda saíram desse teste:
+1. A janelinha de teste (botões) nasceu "always on top" em posição
+   padrão do Windows — podia cair em cima do pedaço de tela calibrado da
+   origem e travar a leitura pra sempre (explica os avisos finais de
+   "janela não é mais a esperada" no log). Corrigido: sem topmost, nasce
+   no canto inferior direito.
+2. Adicionada trava de segurança: `rodar` agora pergunta um **tamanho
+   máximo de posição** (padrão 5) — se passar disso, o envio automático
+   para (a leitura continua, só não manda mais atalho sozinho), evitando
+   um loop como esse rodar sem limite de novo.
+
 ## Estado atual
 
-Protótipo funcional (11/09/2026): `roboclone.exe`
+Protótipo funcional (15/09/2026): `roboclone.exe`
 (`calibrar`/`debug`/`rodar`/`testaratalho`), ver seção acima e
 `README.md`. O envio de atalho (ambos os mecanismos) já foi validado ao
 vivo contra o Profit de verdade. Falta: um teste de ponta a ponta com
-origem e destino em janelas DIFERENTES (a validação até aqui foi com
-`testaratalho` isolado); depois, se/quando precisar, decidir entre
-VPN+TCP direto vs. relay pra levar isso pra duas máquinas.
+origem e destino em janelas DIFERENTES (todos os testes ao vivo até aqui
+foram com `testaratalho` isolado ou com origem==destino, que mascara/
+amplifica o comportamento real); depois, se/quando precisar, decidir
+entre VPN+TCP direto vs. relay pra levar isso pra duas máquinas.

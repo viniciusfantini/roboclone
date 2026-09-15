@@ -33,12 +33,14 @@
 #include "atalho.h"
 #include "sinal.h"
 #include "escrever_texto.h"
+#include "janela_teste.h"
 
 namespace {
 
 const char* CAMINHO_CALIBRACAO = "calibracao.cfg";
 constexpr int INTERVALO_POLL_MS = 10;
 constexpr int ESPERA_ACOMODAR_MS = 60;
+constexpr int TAMANHO_MAXIMO_POSICAO_PADRAO = 5;
 
 int perguntarDelayMs() {
     std::printf("\nEspacamento minimo entre comandos enviados, em ms (o Profit recusa com\n");
@@ -52,6 +54,22 @@ int perguntarDelayMs() {
     if (valor <= 0) {
         std::printf(">> valor invalido, usando o padrao (%d)\n", DELAY_MIN_ENTRE_COPIAS_MS_PADRAO);
         return DELAY_MIN_ENTRE_COPIAS_MS_PADRAO;
+    }
+    return valor;
+}
+
+int perguntarTamanhoMaximoPosicao() {
+    std::printf("\nTamanho maximo de posicao permitido antes de PARAR de mandar atalho\n");
+    std::printf("automatico (trava de seguranca contra loop -- ver README). ENTER pra\n");
+    std::printf("usar o padrao (%d): ", TAMANHO_MAXIMO_POSICAO_PADRAO);
+    std::fflush(stdout);
+    std::string linha;
+    std::getline(std::cin, linha);
+    if (linha.empty()) return TAMANHO_MAXIMO_POSICAO_PADRAO;
+    int valor = std::atoi(linha.c_str());
+    if (valor <= 0) {
+        std::printf(">> valor invalido, usando o padrao (%d)\n", TAMANHO_MAXIMO_POSICAO_PADRAO);
+        return TAMANHO_MAXIMO_POSICAO_PADRAO;
     }
     return valor;
 }
@@ -230,6 +248,9 @@ int modoRodar() {
     definirEspacamentoMinimoMs(perguntarDelayMs());
     std::printf("espacamento minimo entre comandos: %dms\n", espacamentoMinimoAtualMs());
 
+    int tamanhoMaximo = perguntarTamanhoMaximoPosicao();
+    std::printf("tamanho maximo de posicao antes de parar o envio automatico: %d\n", tamanhoMaximo);
+
     CapturaRegiao capBadge(cal.regiaoBadge);
     CapturaRegiao capLetra(cal.regiaoLetra);
     if (!capBadge.capturar() || !capLetra.capturar()) {
@@ -240,21 +261,40 @@ int modoRodar() {
     EstadoPosicao estadoAnterior = estadoInicial.value_or(EstadoPosicao::Flat);
     int tamanho = (estadoAnterior == EstadoPosicao::Flat) ? 0 : 1;
     std::printf("estado inicial: %s (tamanho assumido: %d)\n", nomeEstado(estadoAnterior), tamanho);
+    std::printf("\nRodando. Feche a janela de teste (ou CTRL+C aqui) pra sair.\n");
 
-    std::printf("\nRodando. CTRL+C pra sair.\n");
+    // leitura + envio automatico rodam numa thread separada -- a thread
+    // principal fica livre pra bombear mensagens da janela de teste
+    // (Compra/Venda/Zerar), que manda o atalho manualmente a qualquer
+    // momento, sem interromper a leitura.
+    std::thread threadLeitura([&capBadge, &capLetra, &cal, origem, destino, estadoAnterior, tamanho, tamanhoMaximo]() mutable {
+        while (true) {
+            EstadoPosicao novo = aguardarProximoEstado(capBadge, capLetra, cal, origem);
 
-    while (true) {
-        EstadoPosicao novo = aguardarProximoEstado(capBadge, capLetra, cal, origem);
+            for (const Evento& evento : transicao(estadoAnterior, novo)) {
+                atualizarTamanho(tamanho, evento);
+                char tecla = (evento.comando == Comando::Compra) ? 'C' : (evento.comando == Comando::Venda) ? 'V' : 'A';
+                std::printf("[sinal] %s -> %s : comando %s (ALT+%c), tamanho agora %d\n",
+                            nomeEstado(estadoAnterior), nomeEstado(novo), nomeComando(evento.comando), tecla, tamanho);
 
-        for (const Evento& evento : transicao(estadoAnterior, novo)) {
-            atualizarTamanho(tamanho, evento);
-            char tecla = (evento.comando == Comando::Compra) ? 'C' : (evento.comando == Comando::Venda) ? 'V' : 'A';
-            std::printf("[sinal] %s -> %s : comando %s (ALT+%c), tamanho agora %d\n",
-                        nomeEstado(estadoAnterior), nomeEstado(novo), nomeComando(evento.comando), tecla, tamanho);
-            enviarAltTeclaComEspacamento(destino, tecla);
+                if (tamanho > tamanhoMaximo) {
+                    std::printf("\n!!! TRAVA DE SEGURANCA !!! tamanho (%d) passou do maximo (%d) --\n"
+                                "envio automatico PARADO (provavel loop: origem e destino reagindo\n"
+                                "um ao outro). Os botoes da janela de teste continuam funcionando\n"
+                                "pra voce zerar manualmente. Reinicie o \"rodar\" depois de conferir.\n\n",
+                                tamanho, tamanhoMaximo);
+                    return;
+                }
+
+                enviarAltTeclaComEspacamento(destino, tecla);
+            }
+            estadoAnterior = novo;
         }
-        estadoAnterior = novo;
-    }
+    });
+    threadLeitura.detach();
+
+    rodarJanelaTeste(destino);
+    return 0;
 }
 
 int modoTestarAtalho() {
