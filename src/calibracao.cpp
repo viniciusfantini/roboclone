@@ -44,6 +44,42 @@ POINT centroDaRegiao(const RegiaoTela& r) {
     return POINT{ r.x + r.largura / 2, r.y + r.altura / 2 };
 }
 
+constexpr int RAIO_BUSCA_CENTRO_PX = 6;
+
+struct MelhorPosicao {
+    POINT centro{};
+    int quantidade = 0;
+    long long diferenca = -1;
+};
+
+// clicar "o meio" do badge a mao nunca acerta o pixel exato -- em vez de
+// confiar cegamente no clique, procura numa vizinhanca pequena ao redor
+// dele (RAIO_BUSCA_CENTRO_PX pixels em x e y) qual posicao da' a MENOR
+// diferenca de bitmap contra QUALQUER referencia calibrada, e usa essa
+// (achado ao vivo, 15/09/2026). Custo: (2*raio+1)^2 capturas de uma
+// regiao minuscula, cada uma comparada contra todas as referencias --
+// leva poucos milissegundos no total, nada perceptivel.
+MelhorPosicao buscarMelhorPosicao(POINT centroClicado, int largura, int altura,
+                                   const std::vector<ReferenciaBadge>& referencias) {
+    MelhorPosicao melhor;
+    for (int dy = -RAIO_BUSCA_CENTRO_PX; dy <= RAIO_BUSCA_CENTRO_PX; ++dy) {
+        for (int dx = -RAIO_BUSCA_CENTRO_PX; dx <= RAIO_BUSCA_CENTRO_PX; ++dx) {
+            POINT centro{ centroClicado.x + dx, centroClicado.y + dy };
+            CapturaRegiao cap(regiaoDoCentro(centro, largura, altura));
+            if (!cap.capturar()) continue;
+            for (const auto& ref : referencias) {
+                long long d = cap.diferencaPara(ref.bitmap);
+                if (melhor.diferenca < 0 || d < melhor.diferenca) {
+                    melhor.diferenca = d;
+                    melhor.centro = centro;
+                    melhor.quantidade = ref.quantidade;
+                }
+            }
+        }
+    }
+    return melhor;
+}
+
 long long diferencaEntre(const std::vector<BYTE>& a, const std::vector<BYTE>& b) {
     if (a.size() != b.size()) return 0;
     long long soma = 0;
@@ -255,11 +291,20 @@ bool rodarCalibracao(Calibracao& out) {
         out.temReplay = true;
         aguardarEnter("desligue o modo Replay AGORA nessa janela (some a barra amarela) e confirme");
 
-        POINT novoCentro = aguardarClique(
+        POINT centroClicado = aguardarClique(
             "o MEIO (centro) do badge de posicao, AGORA com o Replay DESLIGADO "
-            "(deve estar mais alto que antes -- essa e' a posicao de operar de verdade)");
-        if (novoCentro.x < 0 && novoCentro.y < 0) { out.temReplay = false; return true; }
-        out.deslocamentoReplayY = (int)(centroBadge.y - novoCentro.y);
+            "(deve estar mais alto que antes -- essa e' a posicao de operar de verdade;\n"
+            "nao precisa acertar o pixel exato)");
+        if (centroClicado.x < 0 && centroClicado.y < 0) { out.temReplay = false; return true; }
+        MelhorPosicao achado = buscarMelhorPosicao(centroClicado, out.regiaoBadge.largura,
+                                                    out.regiaoBadge.altura, out.referencias);
+        if (achado.diferenca < 0 || achado.diferenca > out.tolerancia) {
+            std::printf(">> AVISO: nao achei nada parecido perto desse clique -- clique mais perto\n"
+                        ">> do badge. Replay NAO sera' aplicado (desligado pra essa calibracao).\n");
+            out.temReplay = false;
+            return true;
+        }
+        out.deslocamentoReplayY = (int)(centroBadge.y - achado.centro.y);
 
         std::printf(">> deslocamento medido: %d px (a calibracao principal foi feita com Replay\n"
                     ">> ligado -- operar de verdade vai DESCONTAR esse deslocamento sozinho)\n",
@@ -273,11 +318,20 @@ bool rodarCalibracao(Calibracao& out) {
         if (out.temReplay) {
             aguardarEnter("ligue o modo Replay AGORA nessa janela (a barra amarela deve aparecer) e confirme");
 
-            POINT novoCentro = aguardarClique(
+            POINT centroClicado = aguardarClique(
                 "o MEIO (centro) do badge de posicao, AGORA com o Replay ligado "
-                "(deve estar mais baixo que antes)");
-            if (novoCentro.x < 0 && novoCentro.y < 0) { out.temReplay = false; return true; }
-            out.deslocamentoReplayY = (int)(novoCentro.y - centroBadge.y);
+                "(deve estar mais baixo que antes; nao precisa acertar o pixel exato)");
+            if (centroClicado.x < 0 && centroClicado.y < 0) { out.temReplay = false; return true; }
+            MelhorPosicao achado = buscarMelhorPosicao(centroClicado, out.regiaoBadge.largura,
+                                                        out.regiaoBadge.altura, out.referencias);
+            if (achado.diferenca < 0 || achado.diferenca > out.tolerancia) {
+                std::printf(">> AVISO: nao achei nada parecido perto desse clique -- clique mais\n"
+                            ">> perto do badge. Replay NAO sera' aplicado (desligado pra essa\n"
+                            ">> calibracao).\n");
+                out.temReplay = false;
+                return true;
+            }
+            out.deslocamentoReplayY = (int)(achado.centro.y - centroBadge.y);
 
             std::printf(">> deslocamento medido: %d px\n", out.deslocamentoReplayY);
             std::printf(">> pode desligar o Replay agora.\n");
@@ -317,48 +371,43 @@ void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibrac
         "pode clicar mostrando um estado conhecido (ex. \"1C\") pra conferir");
 
     if (quer) {
-        POINT novoCentro = aguardarClique(
+        POINT centroClicado = aguardarClique(
             "o MEIO (centro) do badge de posicao AGORA (o tamanho ja' esta' "
-            "calibrado, so' a posicao pode ter mudado)");
-        if (novoCentro.x < 0 && novoCentro.y < 0) {
+            "calibrado, so' a posicao pode ter mudado -- nao precisa acertar o\n"
+            "pixel exato, o programa procura sozinho num raio pequeno)");
+        if (centroClicado.x < 0 && centroClicado.y < 0) {
             std::printf(">> cancelado, mantendo a posicao calibrada antes.\n");
         } else {
-            RegiaoTela regiaoClicada = regiaoDoCentro(novoCentro, cal.regiaoBadge.largura, cal.regiaoBadge.altura);
+            MelhorPosicao achado = buscarMelhorPosicao(centroClicado, cal.regiaoBadge.largura,
+                                                        cal.regiaoBadge.altura, cal.referencias);
+            bool reconhecido = (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia);
+            std::printf(">> perto desse clique, a leitura mais parecida seria: %s "
+                        "(diferenca=%lld, tolerancia=%lld, ajuste do clique: %ld,%ld px)\n",
+                        reconhecido ? formatarQuantidade(achado.quantidade).c_str() : "NENHUMA (nao bateu com nada)",
+                        achado.diferenca, cal.tolerancia,
+                        (long)(achado.centro.x - centroClicado.x), (long)(achado.centro.y - centroClicado.y));
 
-            CapturaRegiao cap(regiaoClicada);
-            if (!cap.capturar()) {
-                std::printf(">> falha ao capturar -- mantendo a posicao calibrada antes.\n");
+            if (!reconhecido) {
+                std::printf(">> mantendo a posicao calibrada antes -- clique mais perto do badge, ou\n"
+                            ">> rode \"calibrar\" de novo se precisar.\n");
+            } else if (perguntarSimNao("Essa leitura bate com o que esta' aparecendo na tela agora")) {
+                // a posicao ACHADA (ja' ajustada pela busca) pegou o
+                // estado de AGORA (com ou sem Replay, conforme
+                // 'replayAgora') -- converte pra posicao BASE (a mesma
+                // convencao da calibracao original, ver
+                // Calibracao::calibradoComReplayLigado) antes de guardar.
+                int ajuste = ajusteReplay(replayAgora, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
+                POINT centroBase{ achado.centro.x, achado.centro.y - ajuste };
+                cal.regiaoBadge = regiaoDoCentro(centroBase, cal.regiaoBadge.largura, cal.regiaoBadge.altura);
+                std::printf(">> posicao base atualizada pra essa sessao%s.\n",
+                            ajuste != 0 ? " (ajustado pro deslocamento do Replay)" : "");
+
+                if (perguntarSimNao("Salvar essa posicao atualizada pra proxima vez")) {
+                    if (salvarCalibracao(cal, caminhoCalibracao)) std::printf(">> salvo em %s.\n", caminhoCalibracao.c_str());
+                    else std::printf(">> falha ao salvar.\n");
+                }
             } else {
-                long long menor = -1;
-                int quantidade = 0;
-                for (const auto& ref : cal.referencias) {
-                    long long d = cap.diferencaPara(ref.bitmap);
-                    if (menor < 0 || d < menor) { menor = d; quantidade = ref.quantidade; }
-                }
-                bool reconhecido = (menor >= 0 && menor <= cal.tolerancia);
-                std::printf(">> com essa posicao, a leitura agora seria: %s (diferenca=%lld, tolerancia=%lld)\n",
-                            reconhecido ? formatarQuantidade(quantidade).c_str() : "NENHUMA (nao bateu com nada)",
-                            menor, cal.tolerancia);
-
-                if (perguntarSimNao("Essa leitura bate com o que esta' aparecendo na tela agora")) {
-                    // o clique pegou a posicao de AGORA (com ou sem
-                    // Replay, conforme 'replayAgora') -- converte pra
-                    // posicao BASE (a mesma convencao da calibracao
-                    // original, ver Calibracao::calibradoComReplayLigado)
-                    // antes de guardar.
-                    int ajuste = ajusteReplay(replayAgora, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
-                    POINT centroBase{ novoCentro.x, novoCentro.y - ajuste };
-                    cal.regiaoBadge = regiaoDoCentro(centroBase, cal.regiaoBadge.largura, cal.regiaoBadge.altura);
-                    std::printf(">> posicao base atualizada pra essa sessao%s.\n",
-                                ajuste != 0 ? " (ajustado pro deslocamento do Replay)" : "");
-
-                    if (perguntarSimNao("Salvar essa posicao atualizada pra proxima vez")) {
-                        if (salvarCalibracao(cal, caminhoCalibracao)) std::printf(">> salvo em %s.\n", caminhoCalibracao.c_str());
-                        else std::printf(">> falha ao salvar.\n");
-                    }
-                } else {
-                    std::printf(">> mantendo a posicao calibrada antes -- rode \"calibrar\" de novo se precisar.\n");
-                }
+                std::printf(">> mantendo a posicao calibrada antes -- rode \"calibrar\" de novo se precisar.\n");
             }
         }
     }

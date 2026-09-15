@@ -214,10 +214,11 @@ mais preciso pro badge.
    O deslocamento é sempre MEDIDO na sua tela (achado ao vivo,
    15/09/2026: mede 24px numa máquina, mas varia com DPI/tema, por isso
    não é um número fixo no código). Pede o **centro** do badge, não o
-   canto (achado ao vivo, 15/09/2026: acertar o canto exato de um badge
-   pequeno, tipo 16×13px, é bem mais impreciso que acertar perto do
-   meio — a tolerância de comparação de bitmap já cobre um erro pequeno
-   de clique).
+   canto — e **não precisa acertar o pixel exato**: o programa procura
+   sozinho, numa vizinhança de ±6px ao redor do clique, a posição que bate
+   melhor com alguma referência calibrada (achado ao vivo, 15/09/2026:
+   clicar o centro exato de um badge pequeno, tipo 16×13px, a mão
+   simplesmente não é preciso o bastante pra comparação de bitmap exata).
 
 **Precisa recalibrar (a construção completa 1..N dos dois lados) se**: a
 janela do Profit for redimensionada, ou o zoom/tema mudar (o formato do
@@ -242,19 +243,24 @@ calibração — **uma vez só, no início**:
    onde olhar:
    - Responde "s".
    - Clica só no **meio (centro)** do badge (o tamanho já está
-     calibrado, não pede os dois cantos de novo) — pedir o centro em vez
-     do canto é de propósito (achado ao vivo, 15/09/2026: acertar o
-     canto exato de um badge pequeno é bem mais impreciso que acertar
-     perto do meio). Se respondeu "sim" na pergunta 1, pode clicar
-     mostrando um estado que não seja flat (ex. "1C" com o Replay
-     ligado), pra conferir contra um badge com conteúdo de verdade.
-   - O programa mostra o que LERIA nessa nova posição e pergunta se bate
-     com a tela.
-   - Se sim, usa essa posição como referência BASE pro resto da sessão
-     (descontando o deslocamento do Replay automaticamente, conforme a
-     pergunta 1) e pergunta se quer salvar pra próxima vez.
-   - Se não, mantém a posição calibrada antes e recomenda `calibrar`
-     completo.
+     calibrado, não pede os dois cantos de novo) — **não precisa acertar
+     o pixel exato**: o programa procura sozinho, numa vizinhança de
+     ±6px ao redor do clique, a posição que bate melhor com alguma
+     referência calibrada (achado ao vivo, 15/09/2026: sem essa busca, a
+     imprecisão normal de um clique a mão num badge pequeno, tipo
+     16×13px, já era o bastante pra não reconhecer nada). Se respondeu
+     "sim" na pergunta 1, pode clicar mostrando um estado que não seja
+     flat (ex. "1C" com o Replay ligado), pra conferir contra um badge
+     com conteúdo de verdade.
+   - O programa mostra a leitura mais parecida achada perto do clique
+     (incluindo quanto ajustou o clique) e pergunta se bate com a tela.
+   - Se sim, usa essa posição (já ajustada pela busca) como referência
+     BASE pro resto da sessão (descontando o deslocamento do Replay
+     automaticamente, conforme a pergunta 1) e pergunta se quer salvar
+     pra próxima vez.
+   - Se não achou nada dentro da tolerância perto do clique, ou se você
+     responder que a leitura não bate, mantém a posição calibrada antes
+     e recomenda `calibrar` completo.
 
 ### Vigiando as duas posições (com e sem Replay) ao mesmo tempo
 

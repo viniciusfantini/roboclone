@@ -343,6 +343,26 @@ de comparar com um novo clique de centro). So' os cliques de 1 ponto
 da regiao do badge continua pedindo 2 cantos (precisa dos 2 pra saber o
 tamanho).
 
+**Busca local em volta do clique de centro (15/09/2026)**: dono testou o
+clique no centro (mudança anterior) e reportou que o `debug` não
+conseguia reconhecer "1C" com o clique -- confirmando que mesmo o centro
+de um badge de 16x13px é dificil demais de acertar no pixel exato pra
+uma comparacao de bitmap pixel-a-pixel. Pediu uma "tolerancia" pro
+clique (nao pra comparacao de bitmap em si, que ja tinha tolerancia --
+aumentar aquela deixaria niveis vizinhos mais faceis de confundir).
+
+Implementado `buscarMelhorPosicao()` em `calibracao.cpp`: em vez de
+confiar cegamente no clique, testa uma vizinhanca de ±6px ao redor dele
+(RAIO_BUSCA_CENTRO_PX) -- pra cada posicao candidata, captura e compara
+contra TODAS as referencias, ficando com a (posicao, quantidade) de
+MENOR diferenca global. Custo: ate' (2*6+1)^2=169 capturas de uma regiao
+minuscula, cada uma comparada contra todas as referencias -- poucos
+milissegundos no total. Usado nos 3 lugares que pedem clique de 1 ponto:
+reancorar (`prepararRegiaoDeLeitura`) e as duas medicoes de deslocamento
+do Replay (`rodarCalibracao`). Se nao achar nada dentro da tolerancia
+nem na vizinhanca inteira, avisa e mantem o estado anterior (nunca
+adota uma posicao ruim silenciosamente).
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`
