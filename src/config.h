@@ -39,6 +39,13 @@ struct Calibracao {
     // operador pulou essa parte da calibracao).
     bool temReplay = false;
     int deslocamentoReplayY = 0; // quanto o badge desce quando o Replay liga
+
+    // a calibracao principal (regiaoBadge + todas as referencias) pode
+    // ter sido feita com o Replay JA' ligado (mais pratico, fora do
+    // horario de pregao) -- nesse caso regiaoBadge/referencias estao na
+    // posicao DESLOCADA, e e' preciso SUBTRAIR deslocamentoReplayY (nao
+    // somar) pra achar a posicao de operacao real (Replay desligado).
+    bool calibradoComReplayLigado = false;
 };
 
 // grava 2 arquivos: "<caminhoBase>" (texto, regiao+tolerancia+contagem) e

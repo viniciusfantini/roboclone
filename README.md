@@ -154,6 +154,14 @@ roboclone.exe rodar
 
 1. Responde até quantos contratos calibrar de cada lado (ENTER usa o
    padrão, 5 — ou seja, reconhece de 1 a 5 comprado e de 1 a 5 vendido).
+1b. Responde se vai fazer a construção 1..N (próximos passos) com o modo
+   **Replay do Profit já ligado agora** — útil pra calibrar tudo fora do
+   horário de pregão, sem depender do mercado aberto. Se responder sim,
+   o passo 7 (deslocamento do Replay) muda de direção: em vez de ligar o
+   Replay e medir quanto desce, pede pra **desligar** o Replay depois de
+   calibrar e mede quanto sobe — porque nesse caso a calibração toda já
+   nasce na posição deslocada, e operar de verdade (Replay desligado)
+   precisa descontar o deslocamento, não somar.
 2. Clique no canto superior esquerdo, depois no inferior direito, do
    **badge inteiro** de posição ("Qtd", o retângulo tipo `1C` — ver
    `imagem/boleta.png`). Aponte SÓ pro badge — não inclua campos vizinhos
@@ -190,10 +198,16 @@ ficou mais parecido entre si — se a diferença for pequena demais, dois
 níveis vizinhos (ex. 3C e 4C) podem se confundir; recalibre apontando
 mais preciso pro badge.
 
-7. **Opcional — modo Replay do Profit**: pergunta se você usa o Replay
-   (a barra amarela com play/pause) na janela de origem. Se sim: pede pra
-   ligar o Replay e clicar o novo canto superior esquerdo do badge com o
-   Replay ligado — o deslocamento é MEDIDO na sua tela (achado ao vivo,
+7. **Modo Replay do Profit** — o que acontece aqui depende da resposta do
+   passo 1b:
+   - **Se calibrou SEM Replay** (resposta padrão): pergunta se você às
+     vezes usa o Replay. Se sim, pede pra ligar o Replay agora e clicar
+     o novo canto superior esquerdo do badge — mede quanto desce.
+   - **Se calibrou COM Replay ligado** (passo 1b = sim): pede pra
+     **desligar** o Replay agora e clicar o novo canto superior esquerdo
+     — mede quanto sobe (é a mesma distância, só medida do lado
+     oposto).
+   O deslocamento é sempre MEDIDO na sua tela (achado ao vivo,
    15/09/2026: mede 24px numa máquina, mas varia com DPI/tema, por isso
    não é um número fixo no código).
 
@@ -333,6 +347,18 @@ verdade, então a checagem contínua era complexidade sem necessidade (e
 tinha um bug de interação com o "reancorar rápido": reancorar com o
 Replay ligado, sem o programa saber disso, salvava a posição deslocada
 como se fosse a normal).
+
+**Calibrar inteiro com Replay ligado (15/09/2026)**: a construção 1..N
+(compra/venda de cada nível) também pode ser feita com o Replay já
+ligado desde o início — útil pra calibrar fora do horário de pregão sem
+depender do mercado. Nesse caso a calibração "nasce" na posição
+deslocada, e o programa sabe disso (`calibradoComReplayLigado` em
+`calibracao.cfg`) — na hora de medir o deslocamento, pede pra
+**desligar** o Replay (em vez de ligar) e mede quanto a posição sobe. Em
+`debug`/`rodar`, se você disser que o Replay está desligado agora (pra
+operar de verdade), o programa **desconta** o deslocamento sozinho em
+vez de somar — sem isso, a leitura ficaria presa na posição deslocada da
+calibração mesmo com o Replay já desligado.
 
 ## Limitações conhecidas / próximos passos
 

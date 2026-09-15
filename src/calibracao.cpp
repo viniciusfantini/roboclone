@@ -58,6 +58,15 @@ std::string formatarQuantidade(int q) {
     return buf;
 }
 
+// quanto somar ao Y da posicao BASE (a convencao com que 'cal' foi
+// calibrado -- ver Calibracao::calibradoComReplayLigado) pra achar a
+// posicao de verdade AGORA, dado se o Replay esta' ligado neste momento.
+// Cobre os 4 casos (base com/sem Replay x agora com/sem Replay) com uma
+// formula so' -- ver config.h pro raciocinio completo.
+int ajusteReplay(bool replayAgora, bool calibradoComReplayLigado, int deslocamentoReplayY) {
+    return deslocamentoReplayY * ((replayAgora ? 1 : 0) - (calibradoComReplayLigado ? 1 : 0));
+}
+
 // mostra a instrucao e fica vigiando o badge sozinho -- assim que
 // detectar mudanca (o operador fez a acao pedida), espera acomodar e
 // recaptura, sem precisar de ENTER. Devolve false se ESC for apertado
@@ -92,6 +101,12 @@ bool rodarCalibracao(Calibracao& out) {
     std::printf("-- ver imagem/boleta.png), do jeito que vai ficar durante o pregao.\n");
 
     int nivelMaximo = perguntarNivelMaximo();
+
+    bool comReplayAgora = perguntarSimNao(
+        "Vai fazer essa calibracao (a construcao 1..N abaixo) com o modo\n"
+        "REPLAY do Profit JA' LIGADO nessa janela agora? Util pra fazer tudo\n"
+        "isso fora do horario de pregao, sem depender do mercado aberto");
+    out.calibradoComReplayLigado = comReplayAgora;
 
     std::printf("\nAponte SO' pro badge \"Qtd\" -- nao inclua campos vizinhos que mudam\n");
     std::printf("sozinhos com o preco (ex.: \"Resultado\", \"Res. Aberto\"), senao\n");
@@ -178,29 +193,53 @@ bool rodarCalibracao(Calibracao& out) {
     // a barra amarela do Replay empurra o badge pra baixo por um
     // deslocamento fixo -- medido em 24px numa maquina, mas aqui e'
     // MEDIDO na tela de quem esta' calibrando, nao chumbado no codigo,
-    // porque pode variar com DPI/tema/monitor).
-    out.temReplay = perguntarSimNao(
-        "Voce as vezes usa o modo REPLAY do Profit nessa janela de origem\n"
-        "(a barra amarela com play/pause, que empurra o layout pra baixo)?\n"
-        "Se sim, vamos medir o deslocamento agora");
-
-    if (out.temReplay) {
-        aguardarEnter("ligue o modo Replay AGORA nessa janela (a barra amarela deve aparecer) e confirme");
+    // porque pode variar com DPI/tema/monitor). A direcao da medicao
+    // depende de como a calibracao principal foi feita (pergunta
+    // 'comReplayAgora' la' em cima):
+    //   - calibrou SEM Replay (comum): liga o Replay agora e mede quanto
+    //     desce.
+    //   - calibrou COM Replay ligado (pedido do dono, 15/09/2026, pra
+    //     poder calibrar tudo fora do horario de pregao): desliga o
+    //     Replay agora e mede quanto SOBE -- a base ja' e' a posicao
+    //     deslocada, entao operar de verdade (Replay desligado) precisa
+    //     DESCONTAR o deslocamento, nao somar (ver ajusteReplay acima).
+    if (comReplayAgora) {
+        out.temReplay = true;
+        aguardarEnter("desligue o modo Replay AGORA nessa janela (some a barra amarela) e confirme");
 
         POINT novoTopo = aguardarClique(
-            "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay ligado "
-            "(deve estar mais baixo que antes)");
+            "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay DESLIGADO "
+            "(deve estar mais alto que antes -- essa e' a posicao de operar de verdade)");
         if (novoTopo.x < 0 && novoTopo.y < 0) { out.temReplay = false; return true; }
-        out.deslocamentoReplayY = (int)(novoTopo.y - b1.y);
+        out.deslocamentoReplayY = (int)(b1.y - novoTopo.y);
 
-        std::printf(">> deslocamento medido: %d px\n", out.deslocamentoReplayY);
-        std::printf(">> pode desligar o Replay agora.\n");
+        std::printf(">> deslocamento medido: %d px (a calibracao principal foi feita com Replay\n"
+                    ">> ligado -- operar de verdade vai DESCONTAR esse deslocamento sozinho)\n",
+                    out.deslocamentoReplayY);
+    } else {
+        out.temReplay = perguntarSimNao(
+            "Voce as vezes usa o modo REPLAY do Profit nessa janela de origem\n"
+            "(a barra amarela com play/pause, que empurra o layout pra baixo)?\n"
+            "Se sim, vamos medir o deslocamento agora");
 
-        if (out.deslocamentoReplayY <= 0) {
-            std::printf(">> AVISO: deslocamento veio zero ou negativo -- clique errado? Replay\n"
-                        ">> NAO sera' aplicado (desligado pra essa calibracao).\n");
-            out.temReplay = false;
+        if (out.temReplay) {
+            aguardarEnter("ligue o modo Replay AGORA nessa janela (a barra amarela deve aparecer) e confirme");
+
+            POINT novoTopo = aguardarClique(
+                "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay ligado "
+                "(deve estar mais baixo que antes)");
+            if (novoTopo.x < 0 && novoTopo.y < 0) { out.temReplay = false; return true; }
+            out.deslocamentoReplayY = (int)(novoTopo.y - b1.y);
+
+            std::printf(">> deslocamento medido: %d px\n", out.deslocamentoReplayY);
+            std::printf(">> pode desligar o Replay agora.\n");
         }
+    }
+
+    if (out.temReplay && out.deslocamentoReplayY <= 0) {
+        std::printf(">> AVISO: deslocamento veio zero ou negativo -- clique errado? Replay\n"
+                    ">> NAO sera' aplicado (desligado pra essa calibracao).\n");
+        out.temReplay = false;
     }
 
     return true;
@@ -248,14 +287,16 @@ RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCa
                             menor, cal.tolerancia);
 
                 if (perguntarSimNao("Essa leitura bate com o que esta' aparecendo na tela agora")) {
-                    // se o clique foi feito com o Replay ligado, o clique
-                    // pegou a posicao DESLOCADA -- a base (regiaoBadge)
-                    // precisa descontar isso pra continuar sendo a
-                    // posicao SEM Replay.
+                    // o clique pegou a posicao de AGORA (com ou sem
+                    // Replay, conforme 'replayAgora') -- converte pra
+                    // posicao BASE (a mesma convencao da calibracao
+                    // original, ver Calibracao::calibradoComReplayLigado)
+                    // antes de guardar.
+                    int ajuste = ajusteReplay(replayAgora, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
                     cal.regiaoBadge.x = novoTopo.x;
-                    cal.regiaoBadge.y = replayAgora ? (novoTopo.y - cal.deslocamentoReplayY) : novoTopo.y;
+                    cal.regiaoBadge.y = novoTopo.y - ajuste;
                     std::printf(">> posicao base atualizada pra essa sessao%s.\n",
-                                replayAgora ? " (descontando o deslocamento do Replay)" : "");
+                                ajuste != 0 ? " (ajustado pro deslocamento do Replay)" : "");
 
                     if (perguntarSimNao("Salvar essa posicao atualizada pra proxima vez")) {
                         if (salvarCalibracao(cal, caminhoCalibracao)) std::printf(">> salvo em %s.\n", caminhoCalibracao.c_str());
@@ -269,6 +310,6 @@ RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCa
     }
 
     RegiaoTela regiaoAtiva = cal.regiaoBadge;
-    if (replayAgora) regiaoAtiva.y += cal.deslocamentoReplayY;
+    regiaoAtiva.y += ajusteReplay(replayAgora, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
     return regiaoAtiva;
 }

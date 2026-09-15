@@ -255,6 +255,24 @@ automaticamente ao salvar a posição BASE (resolve o bug de interação).
 Compatível com calibrações salvas antes dessa mudança (os campos de cor
 removidos só ficam ignorados ao carregar).
 
+**Calibrar inteiro com Replay ligado (15/09/2026)**: dono quer fazer a
+construção 1..N inteira (não só a medição do deslocamento) com o Replay
+já ligado, pra poder calibrar fora do horário de pregão. Antes, o código
+assumia que `regiaoBadge`/as referências eram sempre capturadas SEM
+Replay (posição "base" fixa por convenção); com esse pedido, a base pode
+ser a posição COM Replay, e operar de verdade (Replay desligado) precisa
+DESCONTAR o deslocamento, não somar.
+
+Implementado: novo campo `calibradoComReplayLigado` em `Calibracao`
+(true se a construção 1..N foi feita com Replay já ligado). Pergunta
+adicionada bem no início de `rodarCalibracao()` (antes dos cliques do
+badge). A medição do deslocamento no fim da calibração inverte de
+direção conforme essa resposta (liga+mede-descida vs desliga+mede-subida).
+`prepararRegiaoDeLeitura()` usa uma formula so' (`ajusteReplay()`) que
+cobre os 4 casos (base com/sem Replay × agora com/sem Replay), tanto pra
+calcular a regiao ativa da sessao quanto pra normalizar a posicao
+reancorada de volta pra convencao da base.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

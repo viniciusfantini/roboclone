@@ -20,6 +20,7 @@ bool salvarCalibracao(const Calibracao& c, const std::string& caminhoBase) {
         f << "quantidadeReferencias=" << c.referencias.size() << "\n";
         f << "temReplay=" << (c.temReplay ? 1 : 0) << "\n";
         f << "deslocamentoReplayY=" << c.deslocamentoReplayY << "\n";
+        f << "calibradoComReplayLigado=" << (c.calibradoComReplayLigado ? 1 : 0) << "\n";
     }
 
     std::ofstream fr(caminhoRefs(caminhoBase), std::ios::trunc | std::ios::binary);
@@ -56,6 +57,7 @@ bool carregarCalibracao(Calibracao& c, const std::string& caminhoBase) {
 
     c.temReplay = valores["temReplay"] != 0;
     c.deslocamentoReplayY = (int)valores["deslocamentoReplayY"];
+    c.calibradoComReplayLigado = valores["calibradoComReplayLigado"] != 0;
 
     size_t bytesBitmap = (size_t)c.regiaoBadge.largura * c.regiaoBadge.altura * 4;
     if (bytesBitmap == 0 || quantidadeReferencias == 0) return false;
