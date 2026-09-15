@@ -384,6 +384,40 @@ volta a usar `CapturaRegiao` unica + a funcao livre
 (clique no centro do badge + busca local `buscarMelhorPosicao()`)
 continuam, nao foram afetadas por esse revert.
 
+**Removido suporte especifico a Replay -- localizacao automatica pelo
+"-" (15/09/2026)**: apos o revert pra pergunta fixa nao funcionar
+("nao funcionou" de novo, testado ao vivo), o dono propos uma ideia
+melhor: esquecer Replay inteiramente. Quando a posicao esta' flat, o
+badge mostra um "-" com fundo de cor diferente -- essa referencia
+"vazio" ja' existe na calibracao (quantidade=0) e e' tao boa quanto
+"1C"/"2V" pra localizar onde o badge esta' fisicamente na tela AGORA,
+nao importa se foi o Replay, o zoom ou so' a janela que deslocou tudo.
+
+Redesenho completo (4a tentativa nessa frente, as 3 anteriores -- pedir
+Replay ligado agora, vigiar 2 posicoes ao mesmo tempo, pergunta fixa por
+sessao -- tinham problema real no uso ao vivo):
+
+- Removido de `Calibracao` (config.h): `temReplay`, `deslocamentoReplayY`,
+  `calibradoComReplayLigado`. Toda a secao de medir Replay em
+  `rodarCalibracao()` foi removida.
+- Nova funcao `buscarBadge(centro, largura, altura, referencias, raioPx)`
+  (calibracao.cpp/h): procura numa vizinhanca de raio configuravel a
+  posicao de MENOR diferenca contra QUALQUER referencia -- generaliza a
+  antiga `buscarMelhorPosicao` (que so' cobria um raio pequeno pra
+  cliques).
+- Nova funcao `localizarBadge(cal, caminho)`: substitui
+  `prepararRegiaoDeLeitura()` por completo. Busca automatica num raio
+  AMPLO (45px) ao redor da ultima posicao conhecida, SEM perguntar nada;
+  so' pede um clique aproximado (fallback) se a busca ampla nao achar
+  nada.
+- `aguardarProximaPosicao()` (main.cpp) ganhou auto-relocalizacao: se o
+  badge mudar mas nao bater com nada na regiao atual, tenta a mesma
+  busca ampla antes de so' avisar -- cobre ligar/desligar o Replay NO
+  MEIO de uma sessao ja' em andamento, sem reiniciar (o proprio problema
+  que a tentativa anterior, de vigiar 2 posicoes, tentava resolver e
+  tinha um bug fazendo).
+- Nenhuma pergunta sobre Replay existe mais em lugar nenhum do fluxo.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

@@ -1,8 +1,9 @@
 // calibracao.h -- fluxo interativo (console) que descobre, por clique do
 // operador, a regiao do badge de posicao (imagem/boleta.png) e captura
-// uma referencia de bitmap POR QUANTIDADE EXATA (vazio, comprado 1..N,
-// vendido 1..N), fazendo o operador ir contruindo a posicao 1 contrato de
-// cada vez em cada lado.
+// uma referencia de bitmap POR QUANTIDADE EXATA (vazio -- o "-" que
+// aparece quando a posicao esta' flat --, comprado 1..N, vendido 1..N),
+// fazendo o operador ir construindo a posicao 1 contrato de cada vez em
+// cada lado.
 #pragma once
 
 #include "config.h"
@@ -11,24 +12,31 @@
 // devolve false se o operador cancelar (ESC) em algum passo.
 bool rodarCalibracao(Calibracao& out);
 
-// pergunta (uma vez, no inicio da sessao) se o Replay esta' ligado agora
-// -- so' pra interpretar certo o clique abaixo -- e se quer reancorar
-// rapido a POSICAO do badge (reaproveita as referencias ja calibradas,
-// so' atualiza ONDE olhar na tela, nao refaz a construcao de 1..N
-// contratos; util quando o Profit reabre em lugar diferente). So' mexe
-// na posicao BASE de 'cal' (cal.regiaoBadge) se o operador confirmar que
-// a leitura resultante bate com o que aparece na tela; opcionalmente
-// salva a atualizacao em 'caminhoCalibracao'.
+struct ResultadoBusca {
+    RegiaoTela regiao;
+    int quantidade = 0;
+    long long diferenca = -1; // -1 = nao achou nada dentro da tolerancia
+};
+
+// procura, numa area ao redor de 'centro' (raio 'raioPx' pixels em x e
+// y), a posicao que da' a MENOR diferenca de bitmap contra QUALQUER
+// referencia calibrada. Nao filtra por tolerancia -- quem chama decide
+// se 'diferenca' e' boa o bastante (compare com cal.tolerancia).
 //
-// No final, se a calibracao tiver suporte a Replay, pergunta em qual
-// janela vai operar/debugar A PARTIR DE AGORA (com ou sem Replay) e
-// devolve a REGIAO A USAR pro resto da sessao (ja' com o deslocamento
-// aplicado, se for o caso). Essa decisao e' FIXA pra sessao inteira --
-// se trocar de janela no meio (ex.: desligar o Replay durante o
-// debug/rodar), reinicie o programa pra responder de novo (achado ao
-// vivo, 15/09/2026: uma tentativa de vigiar as duas posicoes ao mesmo
-// tempo, sem perguntar, tinha um bug real -- quando o Replay liga/
-// desliga as DUAS regioes mudam no mesmo instante, e so' uma delas era
-// conferida, perdendo a leitura da outra. Uma pergunta fixa e' mais
-// simples e previsivel).
-RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao);
+// Essa e' a base de como o programa acha o badge sozinho, sem perguntar
+// nada sobre Replay/zoom/janela ter mexido (mudanca de 15/09/2026,
+// pedido do dono): a referencia "vazio" (o "-" que aparece quando a
+// posicao esta' flat) e' so' mais uma referencia normal aqui, tao boa
+// quanto "1C"/"2V" pra localizar onde o badge esta' AGORA.
+ResultadoBusca buscarBadge(POINT centro, int largura, int altura,
+                           const std::vector<ReferenciaBadge>& referencias, int raioPx);
+
+// localiza o badge automaticamente, sem perguntar nada: busca numa area
+// ampla ao redor de cal.regiaoBadge (a ultima posicao conhecida). Se nao
+// achar nada dentro da tolerancia, pede UM clique aproximado (nao
+// precisa ser exato) como ponto de partida pra tentar de novo. Atualiza
+// cal.regiaoBadge com a posicao achada e pergunta se quer salvar pra
+// proxima vez. Devolve a regiao ativa pra usar na sessao; se nem com o
+// clique achar nada, devolve a ultima regiao conhecida mesmo assim (com
+// aviso -- quem le' vai continuar tomando "nao bateu" ate' recalibrar).
+RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao);

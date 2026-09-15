@@ -8,17 +8,14 @@
 // exata por quantidade, comparar o BADGE INTEIRO funciona direto -- nao
 // precisa mais separar regiao da letra.
 //
-// Suporte a modo Replay do Profit (15/09/2026): o Replay insere uma barra
-// amarela no topo da janela, empurrando todo o layout (inclusive o badge
-// de posicao) pra baixo por um deslocamento fixo -- medido ao vivo em
-// 24px numa maquina, mas guardado como algo MEDIDO na calibracao (nao
-// chumbado no codigo), porque pode variar com DPI/tema/monitor. So' o
-// deslocamento em Y e' guardado -- decidir se o Replay esta' ligado ou
-// nao e' perguntado ao operador uma vez por sessao (ver
-// calibracao::prepararRegiaoDeLeitura), nao detectado ao vivo por cor
-// (simplificado em 15/09/2026: Replay so' e' usado antes do pregao
-// abrir, nunca liga/desliga no meio de uma sessao de verdade, entao
-// checar isso a cada poll era complexidade sem necessidade).
+// Removido suporte especifico a modo Replay (15/09/2026, pedido do dono):
+// em vez de perguntar/medir/lembrar se o Replay esta' ligado, o programa
+// agora LOCALIZA o badge sozinho procurando numa area ampla ao redor da
+// ultima posicao conhecida (ver calibracao::localizarBadge) -- a
+// referencia "vazio" (o "-" que aparece quando a posicao esta' flat) e'
+// so' mais uma referencia normal nessa busca, tao boa quanto qualquer
+// "1C"/"2V" pra achar onde o badge esta' agora, nao importa se foi o
+// Replay, o zoom ou so' a janela que deslocou tudo.
 #pragma once
 
 #include "captura_tela.h"
@@ -31,21 +28,9 @@ struct ReferenciaBadge {
 };
 
 struct Calibracao {
-    RegiaoTela regiaoBadge;
+    RegiaoTela regiaoBadge; // ultima posicao conhecida -- usada como CENTRO da busca, nao precisa ser exata
     std::vector<ReferenciaBadge> referencias;
     long long tolerancia = 0;
-
-    // deslocamento pro modo Replay -- opcional (temReplay=false se o
-    // operador pulou essa parte da calibracao).
-    bool temReplay = false;
-    int deslocamentoReplayY = 0; // quanto o badge desce quando o Replay liga
-
-    // a calibracao principal (regiaoBadge + todas as referencias) pode
-    // ter sido feita com o Replay JA' ligado (mais pratico, fora do
-    // horario de pregao) -- nesse caso regiaoBadge/referencias estao na
-    // posicao DESLOCADA, e e' preciso SUBTRAIR deslocamentoReplayY (nao
-    // somar) pra achar a posicao de operacao real (Replay desligado).
-    bool calibradoComReplayLigado = false;
 };
 
 // grava 2 arquivos: "<caminhoBase>" (texto, regiao+tolerancia+contagem) e

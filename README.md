@@ -153,34 +153,23 @@ roboclone.exe rodar
 ### `calibrar`
 
 0. **Se já existir uma calibração de badges salva**: pergunta se quer
-   RECALIBRAR as badges (refazer a construção 1..N) ou manter a que já
-   está salva e pular direto pro próximo passo (útil, por exemplo, pra só
-   medir/remedir o deslocamento do Replay sem refazer 1..N inteiro de
-   novo). Respondendo não, os passos 1-6 abaixo são pulados.
+   RECALIBRAR (refazer a construção 1..N) ou manter a que já está salva.
+   Respondendo não, o resto dos passos é pulado.
 1. Responde até quantos contratos calibrar de cada lado (ENTER usa o
    padrão, 5 — ou seja, reconhece de 1 a 5 comprado e de 1 a 5 vendido).
-1b. Responde se vai fazer a construção 1..N (próximos passos) com o modo
-   **Replay do Profit já ligado agora** — útil pra calibrar tudo fora do
-   horário de pregão, sem depender do mercado aberto. Se responder sim,
-   o passo 7 (deslocamento do Replay) muda de direção: em vez de ligar o
-   Replay e medir quanto desce, pede pra **desligar** o Replay depois de
-   calibrar e mede quanto sobe — porque nesse caso a calibração toda já
-   nasce na posição deslocada, e operar de verdade (Replay desligado)
-   precisa descontar o deslocamento, não somar.
 2. Clique no canto superior esquerdo, depois no inferior direito, do
-   **badge inteiro** de posição ("Qtd", o retângulo tipo `1C` — ver
-   `imagem/boleta.png`). Aponte SÓ pro badge — não inclua campos vizinhos
-   que mudam sozinhos com o preço (ex. "Resultado", "Res. Aberto"), senão
-   qualquer variação de preço vira leitura falsa. **Se o nível máximo for
-   10 ou mais**: o badge fica um pouco mais LARGO com 2 dígitos (achado
-   ao vivo, 15/09/2026) — como a região é fixa (não redimensiona
-   sozinha depois), desenhe-a com folga mesmo que agora o badge esteja
-   mostrando só 1 dígito ou vazio, senão o "10" pode ficar cortado
-   quando a posição passar de 9. O programa avisa isso na tela quando
-   você pedir nível ≥ 10.
-3. Confirma (ENTER) com a posição **zerada/flat** — esse é o único passo
-   que pede ENTER, porque é o ponto de partida (sem "mudança" nenhuma
-   pra esperar se você já estiver flat).
+   **badge inteiro** de posição ("Qtd", o retângulo que mostra `1C` ou o
+   `-` quando está zerado — ver `imagem/boleta.png`). Aponte SÓ pro
+   badge — não inclua campos vizinhos que mudam sozinhos com o preço
+   (ex. "Resultado", "Res. Aberto"), senão qualquer variação de preço
+   vira leitura falsa. **Se o nível máximo for 10 ou mais**: o badge
+   fica um pouco mais LARGO com 2 dígitos (achado ao vivo, 15/09/2026) —
+   como a região é fixa (não redimensiona sozinha depois), desenhe-a com
+   folga mesmo que agora o badge esteja mostrando só 1 dígito ou vazio,
+   senão o "10" pode ficar cortado quando a posição passar de 9.
+3. Confirma (ENTER) com a posição **zerada/flat** (o badge deve mostrar
+   `-`) — esse é o único passo que pede ENTER, porque é o ponto de
+   partida (sem "mudança" nenhuma pra esperar se você já estiver flat).
 4. Compra 1 contrato a mercado — **não precisa confirmar nada**: o
    programa fica vigiando o badge e detecta sozinho quando você fizer a
    operação, espera acomodar (~300ms) e já captura, pedindo a próxima
@@ -203,79 +192,48 @@ ficou mais parecido entre si — se a diferença for pequena demais, dois
 níveis vizinhos (ex. 3C e 4C) podem se confundir; recalibre apontando
 mais preciso pro badge.
 
-7. **Modo Replay do Profit** — o que acontece aqui depende da resposta do
-   passo 1b:
-   - **Se calibrou SEM Replay** (resposta padrão): pergunta se você às
-     vezes usa o Replay. Se sim, pede pra ligar o Replay agora e clicar
-     o **meio (centro)** do badge — mede quanto desce.
-   - **Se calibrou COM Replay ligado** (passo 1b = sim): pede pra
-     **desligar** o Replay agora e clicar o meio do badge de novo —
-     mede quanto sobe (é a mesma distância, só medida do lado oposto).
-   O deslocamento é sempre MEDIDO na sua tela (achado ao vivo,
-   15/09/2026: mede 24px numa máquina, mas varia com DPI/tema, por isso
-   não é um número fixo no código). Pede o **centro** do badge, não o
-   canto — e **não precisa acertar o pixel exato**: o programa procura
-   sozinho, numa vizinhança de ±6px ao redor do clique, a posição que bate
-   melhor com alguma referência calibrada (achado ao vivo, 15/09/2026:
-   clicar o centro exato de um badge pequeno, tipo 16×13px, a mão
-   simplesmente não é preciso o bastante pra comparação de bitmap exata).
-
 **Precisa recalibrar (a construção completa 1..N dos dois lados) se**: a
 janela do Profit for redimensionada, ou o zoom/tema mudar (o formato do
-badge muda, as referências capturadas deixam de bater).
+badge muda, as referências capturadas deixam de bater). Só **mudar de
+lugar** na tela (mesmo tamanho/zoom/tema) não precisa recalibrar nada —
+ver a seção seguinte.
 
-**Só mudou de LUGAR na tela (mesmo tamanho/zoom/tema)?** Não precisa
-refazer a construção toda — ver "reancorar rápido" abaixo, disponível no
-início do `debug` e do `rodar`.
+### Localização automática do badge (sem perguntar sobre Replay)
 
-### Início de sessão: Replay agora + reancorar + modo de operação
+**Mudança de design de 15/09/2026** (substitui três tentativas
+anteriores — pergunta única, vigiar duas posições, pergunta fixa por
+sessão — todas com algum problema real no uso ao vivo): em vez de
+perguntar/lembrar se o Replay está ligado, medir deslocamento, ou pedir
+pra confirmar/reancorar a posição, o programa **localiza o badge
+sozinho**, sempre, sem perguntar nada.
 
-`debug` e `rodar` perguntam, logo depois de carregar a calibração —
-**uma vez só, no início, decisão fixa pra sessão inteira**:
+Ideia: a referência "vazio" (o `-` que aparece quando a posição está
+flat) é só mais uma referência normal, tão boa quanto "1C"/"2V" pra
+achar onde o badge está fisicamente na tela AGORA — não importa se foi o
+Replay, o zoom, ou só a janela que deslocou tudo.
 
-1. **Se a calibração tem suporte a Replay**: "o Replay está ligado agora
-   nessa janela?" — usada só pra interpretar corretamente o clique do
-   próximo passo, caso você reancore (pode ser diferente da resposta do
-   passo 3).
-2. **Confirmar/reancorar a posição**: útil se reabriu o Profit e a
-   janela ficou em lugar diferente na tela — reaproveita as referências
-   já calibradas (não refaz a construção 1..N contratos), só atualiza
-   onde olhar:
-   - Responde "s".
-   - Clica só no **meio (centro)** do badge (o tamanho já está
-     calibrado, não pede os dois cantos de novo) — **não precisa acertar
-     o pixel exato**: o programa procura sozinho, numa vizinhança de
-     ±6px ao redor do clique, a posição que bate melhor com alguma
-     referência calibrada (achado ao vivo, 15/09/2026: sem essa busca, a
-     imprecisão normal de um clique a mão num badge pequeno, tipo
-     16×13px, já era o bastante pra não reconhecer nada). Se respondeu
-     "sim" na pergunta 1, pode clicar mostrando um estado que não seja
-     flat (ex. "1C" com o Replay ligado), pra conferir contra um badge
-     com conteúdo de verdade.
-   - O programa mostra a leitura mais parecida achada perto do clique
-     (incluindo quanto ajustou o clique) e pergunta se bate com a tela.
-   - Se sim, usa essa posição (já ajustada pela busca) como referência
-     BASE pro resto da sessão (descontando o deslocamento do Replay
-     automaticamente, conforme a pergunta 1) e pergunta se quer salvar
-     pra próxima vez.
-   - Se não achou nada dentro da tolerância perto do clique, ou se você
-     responder que a leitura não bate, mantém a posição calibrada antes
-     e recomenda `calibrar` completo.
-3. **Se a calibração tem suporte a Replay**: "pra começar a ler agora:
-   você está na janela COM o Replay ligado, ou vai operar/debugar na
-   janela NORMAL (Replay desligado)?" — essa é a resposta que decide de
-   verdade a região de leitura usada no `debug`/`rodar` a partir daqui,
-   e vale pra **sessão inteira**. Responder "não" (janela normal)
-   desconta o deslocamento do Replay automaticamente.
+`debug` e `rodar`, logo depois de carregar a calibração, chamam
+`localizarBadge()`:
 
-**Se você trocar de janela no meio da sessão** (ex.: desligar o Replay
-enquanto o `debug`/`rodar` já está rodando), a leitura não acompanha
-sozinha — feche e abra de novo pra responder a pergunta 3 outra vez.
-(Achado ao vivo, 15/09/2026: uma tentativa de vigiar as duas posições —
-com e sem Replay — ao mesmo tempo, pra não precisar reiniciar, tinha um
-bug real: quando o Replay liga/desliga, as duas regiões mudam no mesmo
-instante, e só uma delas era conferida, perdendo a leitura da outra. Uma
-pergunta fixa é mais simples e previsível.)
+1. Procura numa vizinhança AMPLA (±45px em x e y) ao redor da última
+   posição conhecida (a salva em `calibracao.cfg`) qual ponto dá a
+   MENOR diferença de bitmap contra QUALQUER referência calibrada.
+2. Se achar algo dentro da tolerância, usa essa posição — mostra no
+   console o que achou (ex. "FLAT" ou "COMPRADO 2") e, se a posição
+   mudou desde a última vez, pergunta se quer salvar a atualização.
+3. Se não achar nada (a janela mudou de monitor, por exemplo, ou saiu
+   muito da vizinhança de 45px), pede **um clique aproximado** — não
+   precisa ser exato, só perto de onde o badge está agora — e tenta a
+   mesma busca ampla a partir desse ponto.
+
+**Também acontece em tempo real, durante a leitura** (`aguardarProximaPosicao`
+em `main.cpp`): se o badge mudar mas não bater com nenhuma referência na
+posição atual, o programa tenta se relocalizar sozinho na mesma
+vizinhança ampla antes de só avisar e continuar — então ligar/desligar o
+Replay **no meio** de uma sessão de `debug`/`rodar` já em andamento
+também é coberto, sem precisar reiniciar nada.
+
+Nenhuma pergunta sobre Replay existe mais em lugar nenhum do programa.
 
 ### `debug` (usar antes do `rodar`, pra validar a leitura)
 
@@ -357,45 +315,20 @@ imediatamente (a leitura continua rodando, mas não manda mais atalho
 sozinho) e avisa bem visível no console. Os botões da janela de teste
 continuam funcionando normalmente pra você zerar manualmente.
 
-## Modo Replay do Profit: deslocamento medido, decidido uma vez por sessão
-
-O Replay do Profit (barra amarela com play/pause, usada pra reproduzir
-pregões passados) empurra todo o layout da janela pra baixo por um
-deslocamento fixo em pixels enquanto está ligado. Isso fazia a
-calibração do badge de posição ficar errada dependendo de o Replay estar
-ligado ou não na hora de calibrar.
-
-Resolvido calibrando (passo opcional, ver `calibrar` acima) só o quanto o
-badge desce quando o Replay liga — **medido na sua tela**, não chumbado
-no código. Diferente de uma primeira versão (11-15/09/2026) que ficava
-verificando isso a cada leitura por cor: **simplificado** pra perguntar
-uma vez só, no início do `debug`/`rodar` — "o Replay está ligado agora?"
-— e fixar a região certa pro resto da sessão. Motivo: o Replay só é
-usado antes do pregão abrir, nunca liga/desliga no meio de uma sessão de
-verdade, então a checagem contínua era complexidade sem necessidade (e
-tinha um bug de interação com o "reancorar rápido": reancorar com o
-Replay ligado, sem o programa saber disso, salvava a posição deslocada
-como se fosse a normal).
-
-**Calibrar inteiro com Replay ligado (15/09/2026)**: a construção 1..N
-(compra/venda de cada nível) também pode ser feita com o Replay já
-ligado desde o início — útil pra calibrar fora do horário de pregão sem
-depender do mercado. Nesse caso a calibração "nasce" na posição
-deslocada, e o programa sabe disso (`calibradoComReplayLigado` em
-`calibracao.cfg`) — na hora de medir o deslocamento, pede pra
-**desligar** o Replay (em vez de ligar) e mede quanto a posição sobe. Em
-`debug`/`rodar`, se você disser que o Replay está desligado agora (pra
-operar de verdade), o programa **desconta** o deslocamento sozinho em
-vez de somar — sem isso, a leitura ficaria presa na posição deslocada da
-calibração mesmo com o Replay já desligado.
-
 ## Limitações conhecidas / próximos passos
 
-- Calibração é em coordenadas absolutas de tela — quebra se a janela de
-  origem mover (mitigado pelo "reancorar rápido", ver acima, mas ainda é
-  manual). Melhoria futura: capturar relativo ao client area da janela
-  (`GetClientRect`/`ClientToScreen`), recalculando a cada poll, pra não
-  precisar nem do passo manual de reancorar.
+- A busca automática (ver "Localização automática do badge" acima) tem
+  um raio de ±45px — se a janela mudar de posição mais do que isso (ex.
+  trocar de monitor), o `debug`/`rodar` pedem um clique aproximado pra
+  recomeçar a busca a partir dali; a auto-relocalização em tempo real
+  durante a leitura usa o mesmo raio e não pede clique (só ignora com
+  aviso se não achar nada).
+- Calibração é em coordenadas absolutas de tela como ponto de partida da
+  busca — se a janela de origem mudar de posição, a localização
+  automática (ver acima) resolve sozinha na maioria dos casos, dentro do
+  raio de busca. Melhoria futura: capturar relativo ao client area da
+  janela (`GetClientRect`/`ClientToScreen`), recalculando a cada poll,
+  pra não precisar nem da busca ampla ocasional.
 - Posição além do nível máximo calibrado (ex. 8 contratos, calibrado só
   até 7) não bate com nenhuma referência — fica ignorada com aviso no
   console em vez de agir errado. Recalibrar com um nível maior resolve.
