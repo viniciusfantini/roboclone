@@ -284,6 +284,25 @@ clicar a região + construir 1..N, ou pula direto pra seção do Replay
 (reaproveitando `regiaoBadge`/`referencias`/`tolerancia`/
 `calibradoComReplayLigado` já carregados).
 
+**Separar "Replay ligado agora" de "modo de operação da sessão"
+(15/09/2026)**: dono descreveu o fluxo que queria pro `debug`/`rodar`:
+pergunta do Replay → registra/confere a posição do badge → pergunta se
+vai CONTINUAR no Replay pra essa sessão ou ir pra janela normal → aplica
+o desconto se for pra janela normal → segue com as leituras. Isso expôs
+que eu tinha uma pergunta só fazendo dois papéis (interpretar o clique
+do reancorar E decidir o modo de operação), quando podem ser respostas
+diferentes — ex.: reancorar vendo o Replay (mais conveniente, mostra
+"1C" antes do pregão), mas depois operar na janela normal de verdade.
+
+Corrigido em `prepararRegiaoDeLeitura()`: agora são 2 perguntas
+distintas — `replayAgora` (só pra interpretar o clique do reancorar,
+perguntada antes dele) e `operarComReplay` (perguntada DEPOIS do
+reancorar, decide de fato a região ativa da sessão via `ajusteReplay()`).
+Se as duas respostas divergirem (reancorou com Replay ligado, mas vai
+operar na janela normal), o desconto do deslocamento acontece do jeito
+certo mesmo assim, porque a formula `ajusteReplay()` já cobria esse caso
+-- só faltava a segunda pergunta existir de verdade.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

@@ -224,17 +224,21 @@ badge muda, as referências capturadas deixam de bater).
 refazer a construção toda — ver "reancorar rápido" abaixo, disponível no
 início do `debug` e do `rodar`.
 
-### Início de sessão: Replay agora + reancorar rápido (sem recalibrar tudo)
+### Início de sessão: Replay agora + reancorar + modo de operação
 
-`debug` e `rodar` perguntam duas coisas, logo depois de carregar a
-calibração — **uma vez só, no início**, não ficam checando isso ao vivo
-durante a leitura (mudança de 15/09/2026: o Replay só é usado antes do
-pregão abrir, nunca liga/desliga no meio de uma sessão de verdade, então
-verificar isso a cada leitura era complexidade sem necessidade):
+`debug` e `rodar` perguntam três coisas, nessa ordem, logo depois de
+carregar a calibração — **uma vez só, no início**, não ficam checando
+isso ao vivo durante a leitura (mudança de 15/09/2026: o Replay só é
+usado antes do pregão abrir, nunca liga/desliga no meio de uma sessão de
+verdade, então verificar isso a cada leitura era complexidade sem
+necessidade). São duas perguntas sobre Replay **separadas de propósito**
+— a primeira é só pra interpretar o clique do reancorar, a segunda é a
+que de fato decide como ler pro resto da sessão, e podem ter respostas
+diferentes (ex.: reancorar vendo o Replay, mas operar na janela normal):
 
 1. **Se a calibração tem suporte a Replay**: "o Replay está ligado agora
-   nessa janela?" — sim/não, decide se a leitura da sessão inteira soma
-   o deslocamento ou não.
+   nessa janela?" — usada só pra interpretar corretamente o clique do
+   próximo passo, caso você reancore.
 2. **Confirmar/reancorar a posição**: útil se reabriu o Profit e a
    janela ficou em lugar diferente na tela — reaproveita as referências
    já calibradas (não refaz a construção 1..N contratos), só atualiza
@@ -247,11 +251,17 @@ verificar isso a cada leitura era complexidade sem necessidade):
      um badge com conteúdo de verdade.
    - O programa mostra o que LERIA nessa nova posição e pergunta se bate
      com a tela.
-   - Se sim, usa essa posição pro resto da sessão (descontando o
-     deslocamento do Replay automaticamente, se for o caso) e pergunta
-     se quer salvar pra próxima vez.
+   - Se sim, usa essa posição como referência BASE pro resto da sessão
+     (descontando o deslocamento do Replay automaticamente, conforme a
+     pergunta 1) e pergunta se quer salvar pra próxima vez.
    - Se não, mantém a posição calibrada antes e recomenda `calibrar`
      completo.
+3. **Se a calibração tem suporte a Replay**: "pra essa sessão, vai
+   continuar com o Replay ligado, ou vai pra janela normal (Replay
+   desligado, pra operar de verdade)?" — essa é a resposta que realmente
+   decide a região de leitura usada no `debug`/`rodar` a partir daqui.
+   Responder "não" (janela normal) desconta o deslocamento do Replay
+   automaticamente, mesmo que a pergunta 1 tenha sido "sim".
 
 ### `debug` (usar antes do `rodar`, pra validar a leitura)
 
