@@ -449,6 +449,21 @@ continuar o loop, sem tentar adivinhar uma posicao nova. A localizacao
 automatica ampla continua existindo, mas so' roda UMA vez, no inicio da
 sessao (`localizarBadge()`), nao mais durante a leitura continua.
 
+**Localizar so' dentro da janela de ORIGEM escolhida (15/09/2026)**: dono
+apontou que, com varias janelas do Profit abertas (conta real + outras),
+a ordem estava errada -- `localizarBadge()` rodava ANTES de escolher qual
+e' a janela de origem, entao a busca ampla podia achar um badge parecido
+numa janela DIFERENTE sem saber que estava errada.
+
+Corrigido: `escolherJanelaPorClique("origem")` agora acontece ANTES de
+`localizarBadge()` em `modoDebug()`/`modoRodar()` (main.cpp).
+`localizarBadge()` ganhou o parametro `origemEsperada` (HWND) e so'
+aceita um achado se, alem de bater dentro da tolerancia, pertencer
+fisicamente a essa janela (`janelaNoPonto(centroDaRegiao(r)) ==
+origemEsperada`, reaproveitando `janela_alvo.h`) -- se achar algo
+parecido numa janela diferente, rejeita e avisa em vez de aceitar
+silenciosamente.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

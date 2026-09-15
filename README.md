@@ -84,10 +84,15 @@ cria um risco: se a janela de destino cobrir o mesmo pedaço de tela onde
 a origem foi calibrada, o programa leria o badge ERRADO (o do destino),
 podendo reagir às próprias ordens que ele mesmo mandou.
 
-Por isso `debug` e `rodar` agora também pedem, logo no início, um clique
-pra confirmar qual é a janela de ORIGEM — e a cada leitura conferem se a
-janela que está de fato naquele pedaço de tela ainda é essa mesma janela;
-se não for, avisa no console e ignora a leitura em vez de agir errado.
+Por isso `debug` e `rodar` pedem, logo no início — **antes** até de
+localizar o badge automaticamente —, um clique pra confirmar qual é a
+janela de ORIGEM. A localização automática (ver seção própria abaixo) só
+aceita um achado que pertença fisicamente a essa janela; se achar algo
+parecido só que numa janela diferente (ex.: outra conta do Profit aberta
+por perto), rejeita e avisa em vez de aceitar. Durante a leitura
+contínua, a cada mudança também confere se a janela que está de fato
+naquele pedaço de tela ainda é essa mesma janela; se não for, avisa no
+console e ignora a leitura em vez de agir errado.
 
 **Ainda assim, mantenha as duas janelas do Profit lado a lado, sem
 sobrepor uma a outra**, durante a operação — a checagem evita agir errado,
@@ -212,19 +217,26 @@ flat) é só mais uma referência normal, tão boa quanto "1C"/"2V" pra
 achar onde o badge está fisicamente na tela AGORA — não importa se foi o
 Replay, o zoom, ou só a janela que deslocou tudo.
 
-`debug` e `rodar`, logo depois de carregar a calibração, chamam
-`localizarBadge()`:
+`debug` e `rodar`, logo depois de você escolher a janela de ORIGEM por
+clique (ver seção acima — a escolha da janela vem ANTES, de propósito),
+chamam `localizarBadge(cal, caminho, origem)`:
 
 1. Procura numa vizinhança AMPLA (±45px em x e y) ao redor da última
    posição conhecida (a salva em `calibracao.cfg`) qual ponto dá a
    MENOR diferença de bitmap contra QUALQUER referência calibrada.
-2. Se achar algo dentro da tolerância, usa essa posição — mostra no
-   console o que achou (ex. "FLAT" ou "COMPRADO 2") e, se a posição
-   mudou desde a última vez, pergunta se quer salvar a atualização.
-3. Se não achar nada (a janela mudou de monitor, por exemplo, ou saiu
-   muito da vizinhança de 45px), pede **um clique aproximado** — não
-   precisa ser exato, só perto de onde o badge está agora — e tenta a
-   mesma busca ampla a partir desse ponto.
+2. Só aceita o achado se, além de bater dentro da tolerância, **pertencer
+   fisicamente à janela de ORIGEM escolhida** — se pertencer a uma janela
+   diferente (ex.: outra conta do Profit aberta por perto, sobrepondo a
+   área de busca), rejeita como se não tivesse achado nada, avisando qual
+   foi o problema.
+3. Se aceito, usa essa posição — mostra no console o que achou (ex.
+   "FLAT" ou "COMPRADO 2") e, se a posição mudou desde a última vez,
+   pergunta se quer salvar a atualização.
+4. Se não achar nada válido (a janela mudou de monitor, por exemplo, saiu
+   muito da vizinhança de 45px, ou só achou coisa de outra janela), pede
+   **um clique aproximado dentro da janela de origem** — não precisa ser
+   exato, só perto de onde o badge está agora — e tenta a mesma busca
+   ampla a partir desse ponto (com a mesma checagem de janela).
 
 **Só roda uma vez, no início da sessão — NÃO durante a leitura contínua**
 (achado ao vivo, 15/09/2026): uma versão anterior tentava relocalizar

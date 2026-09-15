@@ -31,12 +31,18 @@ struct ResultadoBusca {
 ResultadoBusca buscarBadge(POINT centro, int largura, int altura,
                            const std::vector<ReferenciaBadge>& referencias, int raioPx);
 
-// localiza o badge automaticamente, sem perguntar nada: busca numa area
-// ampla ao redor de cal.regiaoBadge (a ultima posicao conhecida). Se nao
-// achar nada dentro da tolerancia, pede UM clique aproximado (nao
-// precisa ser exato) como ponto de partida pra tentar de novo. Atualiza
-// cal.regiaoBadge com a posicao achada e pergunta se quer salvar pra
-// proxima vez. Devolve a regiao ativa pra usar na sessao; se nem com o
-// clique achar nada, devolve a ultima regiao conhecida mesmo assim (com
-// aviso -- quem le' vai continuar tomando "nao bateu" ate' recalibrar).
-RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao);
+// localiza o badge automaticamente, sem perguntar nada sobre Replay:
+// busca numa area ampla ao redor de cal.regiaoBadge (a ultima posicao
+// conhecida). 'origemEsperada' e' a janela escolhida pelo operador como
+// ORIGEM (ver janela_alvo.h) -- se o que a busca achar pertencer a uma
+// janela DIFERENTE (ex.: outra janela do Profit aberta por perto,
+// sobrepondo a area de busca), o achado e' rejeitado como se nao tivesse
+// achado nada, pra nao ler a conta errada. Se nao achar nada (nem
+// pertencente a origemEsperada), pede UM clique aproximado (nao precisa
+// ser exato) DENTRO da janela de origem como ponto de partida pra tentar
+// de novo. Atualiza cal.regiaoBadge com a posicao achada e pergunta se
+// quer salvar pra proxima vez. Devolve a regiao ativa pra usar na
+// sessao; se nem com o clique achar nada valido, devolve a ultima regiao
+// conhecida mesmo assim (com aviso -- quem le' vai continuar tomando
+// "nao bateu" ate' recalibrar).
+RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao, HWND origemEsperada);

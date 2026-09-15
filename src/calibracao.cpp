@@ -1,6 +1,7 @@
 #include "calibracao.h"
 #include "entrada.h"
 #include "captura_tela.h"
+#include "janela_alvo.h"
 #include <cstdio>
 #include <algorithm>
 #include <cstdlib>
@@ -269,28 +270,50 @@ bool rodarCalibracao(Calibracao& out) {
     return true;
 }
 
-RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao) {
-    std::printf("\nLocalizando o badge de posicao automaticamente...\n");
+RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao, HWND origemEsperada) {
+    std::printf("\nLocalizando o badge de posicao automaticamente (so' dentro da janela de "
+                "origem escolhida)...\n");
 
+    auto pertenceAOrigem = [&](const RegiaoTela& r) {
+        return janelaNoPonto(centroDaRegiao(r)) == origemEsperada;
+    };
+
+    // 'achado' so' conta se estiver dentro da tolerancia de bitmap E
+    // pertencer fisicamente a' janela de ORIGEM escolhida (achado ao
+    // vivo, 15/09/2026: com varias janelas do Profit abertas, uma busca
+    // ampla sem checar isso podia achar o badge de OUTRA janela, lendo a
+    // conta errada sem avisar).
     POINT centro = centroDaRegiao(cal.regiaoBadge);
     ResultadoBusca achado = buscarBadge(centro, cal.regiaoBadge.largura, cal.regiaoBadge.altura,
                                          cal.referencias, RAIO_BUSCA_AMPLA_PX);
+    bool valido = achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && pertenceAOrigem(achado.regiao);
 
-    if (achado.diferenca < 0 || achado.diferenca > cal.tolerancia) {
-        std::printf(">> nao achei nada parecido perto da ultima posicao conhecida (num raio de\n"
-                    ">> %dpx). Aponte aproximadamente onde o badge esta' agora -- nao precisa\n"
-                    ">> ser exato, so' perto.\n", RAIO_BUSCA_AMPLA_PX);
-        POINT clique = aguardarClique("perto do badge de posicao (\"Qtd\") na tela AGORA");
+    if (!valido) {
+        if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia) {
+            std::printf(">> achei algo parecido perto da ultima posicao conhecida, mas pertence a\n"
+                        ">> OUTRA janela, nao a de origem escolhida -- ignorado.\n");
+        } else {
+            std::printf(">> nao achei nada parecido perto da ultima posicao conhecida (num raio de\n"
+                        ">> %dpx).\n", RAIO_BUSCA_AMPLA_PX);
+        }
+        std::printf(">> Aponte aproximadamente onde o badge esta' agora, DENTRO da janela de\n"
+                    ">> origem -- nao precisa ser exato, so' perto.\n");
+        POINT clique = aguardarClique("perto do badge de posicao (\"Qtd\") na janela de ORIGEM, AGORA");
         if (!(clique.x < 0 && clique.y < 0)) {
             achado = buscarBadge(clique, cal.regiaoBadge.largura, cal.regiaoBadge.altura,
                                   cal.referencias, RAIO_BUSCA_AMPLA_PX);
+            valido = achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && pertenceAOrigem(achado.regiao);
+            if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && !valido) {
+                std::printf(">> o que achei perto desse clique tambem pertence a OUTRA janela --\n"
+                            ">> clique bem em cima do badge, dentro da janela de origem certa.\n");
+            }
         }
     }
 
-    if (achado.diferenca < 0 || achado.diferenca > cal.tolerancia) {
-        std::printf(">> AVISO: continuo sem achar nada reconhecivel -- vou usar a ultima posicao\n"
-                    ">> conhecida mesmo assim, mas provavelmente vai dar \"nao bateu com nada\"\n"
-                    ">> toda hora. Rode \"calibrar\" de novo se isso continuar.\n");
+    if (!valido) {
+        std::printf(">> AVISO: continuo sem achar nada reconhecivel na janela de origem -- vou\n"
+                    ">> usar a ultima posicao conhecida mesmo assim, mas provavelmente vai dar\n"
+                    ">> \"nao bateu com nada\" toda hora. Rode \"calibrar\" de novo se isso continuar.\n");
         return cal.regiaoBadge;
     }
 

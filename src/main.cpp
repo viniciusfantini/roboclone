@@ -168,13 +168,14 @@ int modoCalibrar() {
 int modoDebug() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
-    RegiaoTela regiaoLeitura = localizarBadge(cal, CAMINHO_CALIBRACAO);
 
     HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera' lida)");
     if (!origem) {
         std::printf("Nenhuma janela escolhida, saindo.\n");
         return 1;
     }
+
+    RegiaoTela regiaoLeitura = localizarBadge(cal, CAMINHO_CALIBRACAO, origem);
 
     HWND blocoDeNotas = escolherJanelaPorClique("bloco de notas (vai receber o rotulo lido: C/V/CC/VV/c/v/Z)");
     if (!blocoDeNotas) {
@@ -220,13 +221,14 @@ int modoDebug() {
 int modoRodar() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
-    RegiaoTela regiaoLeitura = localizarBadge(cal, CAMINHO_CALIBRACAO);
 
     HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera' lida)");
     if (!origem) {
         std::printf("Nenhuma janela escolhida, saindo.\n");
         return 1;
     }
+
+    RegiaoTela regiaoLeitura = localizarBadge(cal, CAMINHO_CALIBRACAO, origem);
 
     HWND destino = escolherJanelaPorClique("Profit da conta SIMULADORA (destino dos atalhos)");
     if (!destino) {
