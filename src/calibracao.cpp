@@ -182,25 +182,10 @@ bool rodarCalibracao(Calibracao& out) {
     out.temReplay = perguntarSimNao(
         "Voce as vezes usa o modo REPLAY do Profit nessa janela de origem\n"
         "(a barra amarela com play/pause, que empurra o layout pra baixo)?\n"
-        "Se sim, vamos medir o deslocamento agora pra detectar automatico");
+        "Se sim, vamos medir o deslocamento agora");
 
     if (out.temReplay) {
         aguardarEnter("ligue o modo Replay AGORA nessa janela (a barra amarela deve aparecer) e confirme");
-
-        POINT m1 = aguardarClique("canto SUPERIOR ESQUERDO da area AMARELA/DOURADA da barra do Replay");
-        if (m1.x < 0 && m1.y < 0) { out.temReplay = false; return true; }
-        POINT m2 = aguardarClique("canto INFERIOR DIREITO dessa area amarela");
-        if (m2.x < 0 && m2.y < 0) { out.temReplay = false; return true; }
-        out.regiaoMarcadorReplay = regiaoDeDoisPontos(m1, m2);
-
-        CapturaRegiao capMarcador(out.regiaoMarcadorReplay);
-        if (!capMarcador.capturar()) {
-            std::printf(">> falha ao capturar a area do marcador -- Replay NAO configurado.\n");
-            out.temReplay = false;
-            return true;
-        }
-        capMarcador.corMedia(out.corReplayB, out.corReplayG, out.corReplayR);
-        out.toleranciaCorReplay = 40; // heuristica -- so' 1 referencia de cor, sem par pra comparar
 
         POINT novoTopo = aguardarClique(
             "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay ligado "
@@ -208,8 +193,7 @@ bool rodarCalibracao(Calibracao& out) {
         if (novoTopo.x < 0 && novoTopo.y < 0) { out.temReplay = false; return true; }
         out.deslocamentoReplayY = (int)(novoTopo.y - b1.y);
 
-        std::printf(">> deslocamento medido: %d px (cor do Replay: BGR(%d,%d,%d))\n",
-                    out.deslocamentoReplayY, out.corReplayB, out.corReplayG, out.corReplayR);
+        std::printf(">> deslocamento medido: %d px\n", out.deslocamentoReplayY);
         std::printf(">> pode desligar o Replay agora.\n");
 
         if (out.deslocamentoReplayY <= 0) {
@@ -222,58 +206,69 @@ bool rodarCalibracao(Calibracao& out) {
     return true;
 }
 
-bool confirmarOuReancorarPosicao(Calibracao& cal, const std::string& caminhoCalibracao) {
+RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao) {
+    // decide UMA vez por sessao se o Replay esta' ligado agora -- nao
+    // fica checando isso ao vivo durante a leitura (simplificado em
+    // 15/09/2026: o Replay so' e' usado antes do pregao abrir, nunca
+    // liga/desliga no meio de uma sessao de verdade).
+    bool replayAgora = cal.temReplay &&
+        perguntarSimNao("O modo Replay esta' LIGADO agora nessa janela de origem?");
+
     bool quer = perguntarSimNao(
         "Confirmar/reancorar rapido a posicao do badge antes de comecar?\n"
         "Util se reabriu o Profit e a janela mudou de lugar -- reaproveita as\n"
         "referencias JA calibradas (nao refaz 1..N contratos), so' atualiza\n"
-        "ONDE olhar na tela. Pode fazer isso com o Replay ligado antes do\n"
-        "pregao abrir, mostrando um estado conhecido (ex. \"1C\") pra conferir");
-    if (!quer) return true;
+        "ONDE olhar na tela. Se respondeu que o Replay esta' ligado agora,\n"
+        "pode clicar mostrando um estado conhecido (ex. \"1C\") pra conferir");
 
-    POINT novoTopo = aguardarClique(
-        "canto SUPERIOR ESQUERDO do badge de posicao AGORA (o tamanho ja' esta' "
-        "calibrado, so' a posicao pode ter mudado)");
-    if (novoTopo.x < 0 && novoTopo.y < 0) {
-        std::printf(">> cancelado, mantendo a posicao calibrada antes.\n");
-        return true;
+    if (quer) {
+        POINT novoTopo = aguardarClique(
+            "canto SUPERIOR ESQUERDO do badge de posicao AGORA (o tamanho ja' esta' "
+            "calibrado, so' a posicao pode ter mudado)");
+        if (novoTopo.x < 0 && novoTopo.y < 0) {
+            std::printf(">> cancelado, mantendo a posicao calibrada antes.\n");
+        } else {
+            RegiaoTela regiaoClicada = cal.regiaoBadge;
+            regiaoClicada.x = novoTopo.x;
+            regiaoClicada.y = novoTopo.y;
+
+            CapturaRegiao cap(regiaoClicada);
+            if (!cap.capturar()) {
+                std::printf(">> falha ao capturar -- mantendo a posicao calibrada antes.\n");
+            } else {
+                long long menor = -1;
+                int quantidade = 0;
+                for (const auto& ref : cal.referencias) {
+                    long long d = cap.diferencaPara(ref.bitmap);
+                    if (menor < 0 || d < menor) { menor = d; quantidade = ref.quantidade; }
+                }
+                bool reconhecido = (menor >= 0 && menor <= cal.tolerancia);
+                std::printf(">> com essa posicao, a leitura agora seria: %s (diferenca=%lld, tolerancia=%lld)\n",
+                            reconhecido ? formatarQuantidade(quantidade).c_str() : "NENHUMA (nao bateu com nada)",
+                            menor, cal.tolerancia);
+
+                if (perguntarSimNao("Essa leitura bate com o que esta' aparecendo na tela agora")) {
+                    // se o clique foi feito com o Replay ligado, o clique
+                    // pegou a posicao DESLOCADA -- a base (regiaoBadge)
+                    // precisa descontar isso pra continuar sendo a
+                    // posicao SEM Replay.
+                    cal.regiaoBadge.x = novoTopo.x;
+                    cal.regiaoBadge.y = replayAgora ? (novoTopo.y - cal.deslocamentoReplayY) : novoTopo.y;
+                    std::printf(">> posicao base atualizada pra essa sessao%s.\n",
+                                replayAgora ? " (descontando o deslocamento do Replay)" : "");
+
+                    if (perguntarSimNao("Salvar essa posicao atualizada pra proxima vez")) {
+                        if (salvarCalibracao(cal, caminhoCalibracao)) std::printf(">> salvo em %s.\n", caminhoCalibracao.c_str());
+                        else std::printf(">> falha ao salvar.\n");
+                    }
+                } else {
+                    std::printf(">> mantendo a posicao calibrada antes -- rode \"calibrar\" de novo se precisar.\n");
+                }
+            }
+        }
     }
 
-    RegiaoTela novaRegiao = cal.regiaoBadge;
-    novaRegiao.x = novoTopo.x;
-    novaRegiao.y = novoTopo.y;
-
-    CapturaRegiao cap(novaRegiao);
-    if (!cap.capturar()) {
-        std::printf(">> falha ao capturar -- mantendo a posicao calibrada antes.\n");
-        return true;
-    }
-
-    long long menor = -1;
-    int quantidade = 0;
-    for (const auto& ref : cal.referencias) {
-        long long d = cap.diferencaPara(ref.bitmap);
-        if (menor < 0 || d < menor) { menor = d; quantidade = ref.quantidade; }
-    }
-
-    bool reconhecido = (menor >= 0 && menor <= cal.tolerancia);
-    std::printf(">> com essa posicao, a leitura agora seria: %s (diferenca=%lld, tolerancia=%lld)\n",
-                reconhecido ? formatarQuantidade(quantidade).c_str() : "NENHUMA (nao bateu com nada)",
-                menor, cal.tolerancia);
-
-    bool certo = perguntarSimNao("Essa leitura bate com o que esta' aparecendo na tela agora");
-    if (!certo) {
-        std::printf(">> mantendo a posicao calibrada antes -- rode \"calibrar\" de novo se precisar.\n");
-        return true;
-    }
-
-    cal.regiaoBadge = novaRegiao;
-    std::printf(">> posicao atualizada pra essa sessao.\n");
-
-    if (perguntarSimNao("Salvar essa posicao atualizada pra proxima vez")) {
-        if (salvarCalibracao(cal, caminhoCalibracao)) std::printf(">> salvo em %s.\n", caminhoCalibracao.c_str());
-        else std::printf(">> falha ao salvar.\n");
-    }
-
-    return true;
+    RegiaoTela regiaoAtiva = cal.regiaoBadge;
+    if (replayAgora) regiaoAtiva.y += cal.deslocamentoReplayY;
+    return regiaoAtiva;
 }

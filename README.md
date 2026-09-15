@@ -192,14 +192,10 @@ mais preciso pro badge.
 
 7. **Opcional — modo Replay do Profit**: pergunta se você usa o Replay
    (a barra amarela com play/pause) na janela de origem. Se sim: pede pra
-   ligar o Replay, aponta a área amarela da barra (2 cliques) e o novo
-   canto superior esquerdo do badge com o Replay ligado (1 clique) — o
-   deslocamento é MEDIDO na sua tela (achado ao vivo, 15/09/2026: mede
-   24px numa máquina, mas varia com DPI/tema, por isso não é um número
-   fixo no código). Depois disso, `debug`/`rodar` detectam sozinhos se o
-   Replay está ligado ou não a cada momento e ajustam a região de leitura
-   automaticamente — não precisa recalibrar toda vez que ligar/desligar o
-   Replay.
+   ligar o Replay e clicar o novo canto superior esquerdo do badge com o
+   Replay ligado — o deslocamento é MEDIDO na sua tela (achado ao vivo,
+   15/09/2026: mede 24px numa máquina, mas varia com DPI/tema, por isso
+   não é um número fixo no código).
 
 **Precisa recalibrar (a construção completa 1..N dos dois lados) se**: a
 janela do Profit for redimensionada, ou o zoom/tema mudar (o formato do
@@ -209,27 +205,34 @@ badge muda, as referências capturadas deixam de bater).
 refazer a construção toda — ver "reancorar rápido" abaixo, disponível no
 início do `debug` e do `rodar`.
 
-### Reancorar rápido a posição (sem recalibrar tudo de novo)
+### Início de sessão: Replay agora + reancorar rápido (sem recalibrar tudo)
 
-`debug` e `rodar` perguntam, logo depois de carregar a calibração, se
-você quer confirmar/reancorar a posição do badge. Útil se reabriu o
-Profit e a janela ficou em lugar diferente na tela — reaproveita as
-referências já calibradas (não refaz a construção 1..N contratos),
-**só atualiza onde olhar**:
+`debug` e `rodar` perguntam duas coisas, logo depois de carregar a
+calibração — **uma vez só, no início**, não ficam checando isso ao vivo
+durante a leitura (mudança de 15/09/2026: o Replay só é usado antes do
+pregão abrir, nunca liga/desliga no meio de uma sessão de verdade, então
+verificar isso a cada leitura era complexidade sem necessidade):
 
-1. Responde "s".
-2. Clica só no canto superior esquerdo do badge (o tamanho já está
-   calibrado, não pede o canto inferior direito de novo).
-3. O programa mostra o que LERIA nessa nova posição (ex. "COMPRADO 1") e
-   pergunta se bate com o que está aparecendo na tela.
-4. Se sim, usa essa posição pro resto da sessão, e pergunta se quer
-   salvar pra próxima vez (não precisa reancorar de novo depois).
-5. Se não, mantém a posição calibrada antes e recomenda rodar `calibrar`
-   completo.
-
-Dá pra fazer esse passo com o **Replay ligado antes do pregão abrir**,
-mostrando um estado que não seja flat (ex. "1C") — assim a conferência
-do passo 3 é contra um badge com conteúdo de verdade, não só vazio.
+1. **Se a calibração tem suporte a Replay**: "o Replay está ligado agora
+   nessa janela?" — sim/não, decide se a leitura da sessão inteira soma
+   o deslocamento ou não.
+2. **Confirmar/reancorar a posição**: útil se reabriu o Profit e a
+   janela ficou em lugar diferente na tela — reaproveita as referências
+   já calibradas (não refaz a construção 1..N contratos), só atualiza
+   onde olhar:
+   - Responde "s".
+   - Clica só no canto superior esquerdo do badge (o tamanho já está
+     calibrado, não pede o canto inferior direito de novo) — se
+     respondeu "sim" na pergunta 1, pode clicar mostrando um estado que
+     não seja flat (ex. "1C" com o Replay ligado), pra conferir contra
+     um badge com conteúdo de verdade.
+   - O programa mostra o que LERIA nessa nova posição e pergunta se bate
+     com a tela.
+   - Se sim, usa essa posição pro resto da sessão (descontando o
+     deslocamento do Replay automaticamente, se for o caso) e pergunta
+     se quer salvar pra próxima vez.
+   - Se não, mantém a posição calibrada antes e recomenda `calibrar`
+     completo.
 
 ### `debug` (usar antes do `rodar`, pra validar a leitura)
 
@@ -311,7 +314,7 @@ imediatamente (a leitura continua rodando, mas não manda mais atalho
 sozinho) e avisa bem visível no console. Os botões da janela de teste
 continuam funcionando normalmente pra você zerar manualmente.
 
-## Modo Replay do Profit: detecção automática de deslocamento
+## Modo Replay do Profit: deslocamento medido, decidido uma vez por sessão
 
 O Replay do Profit (barra amarela com play/pause, usada pra reproduzir
 pregões passados) empurra todo o layout da janela pra baixo por um
@@ -319,21 +322,17 @@ deslocamento fixo em pixels enquanto está ligado. Isso fazia a
 calibração do badge de posição ficar errada dependendo de o Replay estar
 ligado ou não na hora de calibrar.
 
-Resolvido calibrando (passo opcional, ver `calibrar` acima) uma área que
-fica amarela quando o Replay liga, mais o quanto o badge desce nesse
-momento — os dois **medidos na sua tela**, não chumbados no código.
-`debug`/`rodar` verificam essa área a cada leitura e trocam sozinhos
-entre a posição normal e a deslocada, imprimindo `[info] modo Replay
-LIGADO/DESLIGADO` no console quando alternam. Sem esse passo de
-calibração (respondeu não, ou pulou), o comportamento é o de antes — só
-a região normal, sem ajuste nenhum.
-
-**Limitação**: a detecção usa só 1 referência de cor (a área amarela do
-Replay) com uma tolerância heurística fixa (40) — como não há uma 2ª
-referência pra contrastar, isso pode falhar se o fundo do painel, por
-algum tema/skin diferente, também for amarelado. Se `[info] modo Replay
-LIGADO` aparecer sem o Replay estar ligado de verdade (ou vice-versa),
-recalibre apontando uma área mais exclusivamente amarela da barra.
+Resolvido calibrando (passo opcional, ver `calibrar` acima) só o quanto o
+badge desce quando o Replay liga — **medido na sua tela**, não chumbado
+no código. Diferente de uma primeira versão (11-15/09/2026) que ficava
+verificando isso a cada leitura por cor: **simplificado** pra perguntar
+uma vez só, no início do `debug`/`rodar` — "o Replay está ligado agora?"
+— e fixar a região certa pro resto da sessão. Motivo: o Replay só é
+usado antes do pregão abrir, nunca liga/desliga no meio de uma sessão de
+verdade, então a checagem contínua era complexidade sem necessidade (e
+tinha um bug de interação com o "reancorar rápido": reancorar com o
+Replay ligado, sem o programa saber disso, salvava a posição deslocada
+como se fosse a normal).
 
 ## Limitações conhecidas / próximos passos
 

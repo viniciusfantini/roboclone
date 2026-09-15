@@ -234,6 +234,27 @@ sim/não antes de adotar a nova posição, com opção de salvar pra próxima
 vez. Pensado pra poder ser feito com o Replay ligado antes do pregão
 abrir, mostrando um estado tipo "1C" (não flat) pra conferir de verdade.
 
+**Simplificação: Replay decidido uma vez por sessão, não ao vivo
+(15/09/2026)**: dono questionou se a detecção contínua de Replay (por
+cor, a cada poll) ainda fazia sentido já que o "reancorar rápido" já
+ajusta a posição no início de cada sessão. Resposta: não fazia — Replay
+só é usado antes do pregão abrir, nunca liga/desliga no meio de uma
+sessão de `rodar` de verdade, então checar isso ao vivo era complexidade
+sem necessidade. Pior: achei um bug de interação real — reancorar com o
+Replay ligado, sem o programa saber, salvava a posição DESLOCADA como se
+fosse a normal, quebrando a leitura quando o Replay desligasse de
+verdade pro pregão.
+
+Simplificado: removida a deteccao continua por cor (removida a classe
+`LeitorBadge`, `regiaoMarcadorReplay`/`corReplayB,G,R`/
+`toleranciaCorReplay` do `Calibracao` e da calibração). Agora
+`prepararRegiaoDeLeitura()` (`calibracao.cpp`) pergunta UMA vez, no
+início de `debug`/`rodar`: "Replay ligado agora?" + "quer reancorar?" —
+e o reancorar, se feito com Replay ligado, desconta o deslocamento
+automaticamente ao salvar a posição BASE (resolve o bug de interação).
+Compatível com calibrações salvas antes dessa mudança (os campos de cor
+removidos só ficam ignorados ao carregar).
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

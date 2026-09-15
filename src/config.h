@@ -12,7 +12,13 @@
 // amarela no topo da janela, empurrando todo o layout (inclusive o badge
 // de posicao) pra baixo por um deslocamento fixo -- medido ao vivo em
 // 24px numa maquina, mas guardado como algo MEDIDO na calibracao (nao
-// chumbado no codigo), porque pode variar com DPI/tema/monitor.
+// chumbado no codigo), porque pode variar com DPI/tema/monitor. So' o
+// deslocamento em Y e' guardado -- decidir se o Replay esta' ligado ou
+// nao e' perguntado ao operador uma vez por sessao (ver
+// calibracao::prepararRegiaoDeLeitura), nao detectado ao vivo por cor
+// (simplificado em 15/09/2026: Replay so' e' usado antes do pregao
+// abrir, nunca liga/desliga no meio de uma sessao de verdade, entao
+// checar isso a cada poll era complexidade sem necessidade).
 #pragma once
 
 #include "captura_tela.h"
@@ -29,13 +35,10 @@ struct Calibracao {
     std::vector<ReferenciaBadge> referencias;
     long long tolerancia = 0;
 
-    // deslocamento automatico pro modo Replay -- opcional (temReplay=false
-    // se o operador pulou essa parte da calibracao).
+    // deslocamento pro modo Replay -- opcional (temReplay=false se o
+    // operador pulou essa parte da calibracao).
     bool temReplay = false;
-    RegiaoTela regiaoMarcadorReplay;   // area que fica na cor do Replay quando ligado
-    BYTE corReplayB = 0, corReplayG = 0, corReplayR = 0;
-    long long toleranciaCorReplay = 0;
-    int deslocamentoReplayY = 0;       // quanto o badge desce quando o Replay liga
+    int deslocamentoReplayY = 0; // quanto o badge desce quando o Replay liga
 };
 
 // grava 2 arquivos: "<caminhoBase>" (texto, regiao+tolerancia+contagem) e
