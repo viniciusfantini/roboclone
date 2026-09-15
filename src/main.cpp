@@ -26,6 +26,7 @@
 #include <chrono>
 #include <iostream>
 #include <optional>
+#include <cmath>
 
 #include "config.h"
 #include "calibracao.h"
@@ -100,41 +101,102 @@ POINT centroRegiao(const RegiaoTela& r) {
     return POINT{ r.x + r.largura / 2, r.y + r.altura / 2 };
 }
 
-// bloqueia ate' detectar uma mudanca de posicao reconhecida (o badge
-// mudou E a nova aparencia bate com uma das referencias calibradas).
-// Avisa no console (sem travar) se o badge mudar pra algo nao
-// reconhecido, OU se a janela que esta' fisicamente naquele pedaco de
-// tela agora nao e' mais a janela de ORIGEM esperada (ex.: a janela de
-// destino ficou por cima -- sem essa checagem, leria o badge errado,
-// podendo criar um loop lendo as proprias ordens que mandou).
-int aguardarProximaPosicao(CapturaRegiao& capBadge, const Calibracao& cal, HWND origemEsperada) {
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALO_POLL_MS));
-
-        if (!capBadge.capturar()) continue;
-        if (!capBadge.mudouDesdeUltimaCaptura()) continue;
-
-        HWND atual = janelaNoPonto(centroRegiao(cal.regiaoBadge));
-        if (atual != origemEsperada) {
-            std::printf("[aviso] a janela na regiao calibrada da origem NAO e' mais a janela de "
-                        "origem esperada (HWND=%p) -- leitura ignorada. Confira se a janela de "
-                        "destino nao ficou por cima.\n", (void*)atual);
-            continue;
-        }
-
-        // deixa o repaint acomodar antes de reler (evita pegar um frame no
-        // meio da atualizacao) e reestabelece a baseline pra nao
-        // re-disparar no proximo poll com o mesmo conteudo.
-        std::this_thread::sleep_for(std::chrono::milliseconds(ESPERA_ACOMODAR_MS));
-        capBadge.capturar();
-
-        auto posicao = classificar(capBadge, cal);
-        if (posicao.has_value()) return *posicao;
-
-        std::printf("[aviso] badge mudou mas nao bateu com nenhuma referencia dentro da tolerancia "
-                    "-- ignorado (pode ser ruido de campo vizinho, ou posicao alem do calibrado)\n");
-    }
+double distanciaCor(BYTE b1, BYTE g1, BYTE r1, BYTE b2, BYTE g2, BYTE r2) {
+    double db = (double)b1 - b2, dg = (double)g1 - g2, dr = (double)r1 - r2;
+    return std::sqrt(db * db + dg * dg + dr * dr);
 }
+
+// le' o badge de posicao, re-ancorando sozinho a regiao quando o modo
+// Replay do Profit liga/desliga (a barra amarela do Replay empurra o
+// layout pra baixo por um deslocamento MEDIDO na calibracao -- ver
+// config.h/calibracao.cpp, achado ao vivo 15/09/2026).
+class LeitorBadge {
+public:
+    explicit LeitorBadge(const Calibracao& cal) : cal_(cal), regiaoAtual_(cal.regiaoBadge), cap_(regiaoAtual_) {
+        if (cal_.temReplay) capMarcador_.emplace(cal_.regiaoMarcadorReplay);
+        replayAtivoAnterior_ = replayEstaAtivo();
+        cap_.capturar();
+    }
+
+    // posicao classificada agora, sem esperar mudanca (uso: leitura
+    // inicial, ao comecar debug/rodar).
+    int posicaoAtual() {
+        atualizarRegiaoSeMudou();
+        cap_.capturar();
+        return classificar(cap_, cal_).value_or(0);
+    }
+
+    // bloqueia ate' detectar uma mudanca de posicao reconhecida (o badge
+    // mudou E a nova aparencia bate com uma das referencias calibradas).
+    // Avisa no console (sem travar) se o badge mudar pra algo nao
+    // reconhecido, OU se a janela que esta' fisicamente naquele pedaco de
+    // tela agora nao e' mais a janela de ORIGEM esperada (ex.: a janela
+    // de destino ficou por cima -- sem essa checagem, leria o badge
+    // errado, podendo criar um loop lendo as proprias ordens que mandou).
+    int aguardarProxima(HWND origemEsperada) {
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALO_POLL_MS));
+
+            atualizarRegiaoSeMudou();
+
+            if (!cap_.capturar()) continue;
+            if (!cap_.mudouDesdeUltimaCaptura()) continue;
+
+            HWND atual = janelaNoPonto(centroRegiao(regiaoAtual_));
+            if (atual != origemEsperada) {
+                std::printf("[aviso] a janela na regiao calibrada da origem NAO e' mais a janela de "
+                            "origem esperada (HWND=%p) -- leitura ignorada. Confira se a janela de "
+                            "destino nao ficou por cima.\n", (void*)atual);
+                continue;
+            }
+
+            // deixa o repaint acomodar antes de reler (evita pegar um
+            // frame no meio da atualizacao) e reestabelece a baseline
+            // pra nao re-disparar no proximo poll com o mesmo conteudo.
+            std::this_thread::sleep_for(std::chrono::milliseconds(ESPERA_ACOMODAR_MS));
+            cap_.capturar();
+
+            auto posicao = classificar(cap_, cal_);
+            if (posicao.has_value()) return *posicao;
+
+            std::printf("[aviso] badge mudou mas nao bateu com nenhuma referencia dentro da tolerancia "
+                        "-- ignorado (pode ser ruido de campo vizinho, ou posicao alem do calibrado)\n");
+        }
+    }
+
+private:
+    bool replayEstaAtivo() {
+        if (!cal_.temReplay || !capMarcador_.has_value()) return false;
+        if (!capMarcador_->capturar()) return false;
+        BYTE b, g, r;
+        capMarcador_->corMedia(b, g, r);
+        double d = distanciaCor(b, g, r, cal_.corReplayB, cal_.corReplayG, cal_.corReplayR);
+        return d <= (double)cal_.toleranciaCorReplay;
+    }
+
+    void atualizarRegiaoSeMudou() {
+        if (!cal_.temReplay) return;
+        bool ativo = replayEstaAtivo();
+        if (inicializado_ && ativo == replayAtivoAnterior_) return;
+
+        RegiaoTela nova = cal_.regiaoBadge;
+        if (ativo) nova.y += cal_.deslocamentoReplayY;
+        regiaoAtual_ = nova;
+        cap_ = CapturaRegiao(regiaoAtual_);
+        cap_.capturar();
+        replayAtivoAnterior_ = ativo;
+        inicializado_ = true;
+        std::printf("[info] modo Replay %s -- regiao de leitura %s\n",
+                    ativo ? "LIGADO" : "DESLIGADO", ativo ? "deslocada" : "normal");
+    }
+
+    const Calibracao& cal_;
+    RegiaoTela regiaoAtual_;
+    CapturaRegiao cap_;
+    std::optional<CapturaRegiao> capMarcador_;
+    bool replayAtivoAnterior_ = false;
+    bool inicializado_ = false;
+};
 
 bool carregarCalibracaoOuAvisar(Calibracao& cal) {
     if (carregarCalibracao(cal, CAMINHO_CALIBRACAO)) return true;
@@ -173,19 +235,15 @@ int modoDebug() {
         return 1;
     }
 
-    CapturaRegiao capBadge(cal.regiaoBadge);
-    if (!capBadge.capturar()) {
-        std::fprintf(stderr, "ERRO: falha ao capturar a regiao calibrada. Recalibre.\n");
-        return 1;
-    }
-    int posicaoAnterior = classificar(capBadge, cal).value_or(0);
+    LeitorBadge leitor(cal);
+    int posicaoAnterior = leitor.posicaoAtual();
     std::printf("posicao inicial: %s\n", nomePosicao(posicaoAnterior).c_str());
 
     std::printf("\nModo DEBUG -- NAO manda nenhum atalho, so' escreve no bloco de notas.\n");
     std::printf("Pode operar manualmente na conta de origem agora. CTRL+C pra sair.\n");
 
     while (true) {
-        int nova = aguardarProximaPosicao(capBadge, cal, origem);
+        int nova = leitor.aguardarProxima(origem);
 
         for (const Evento& evento : transicao(posicaoAnterior, nova)) {
             const char* rotulo = rotuloDebug(evento);
@@ -235,12 +293,8 @@ int modoRodar() {
     int tamanhoMaximo = perguntarTamanhoMaximoPosicao();
     std::printf("tamanho maximo de posicao antes de parar o envio automatico: %d\n", tamanhoMaximo);
 
-    CapturaRegiao capBadge(cal.regiaoBadge);
-    if (!capBadge.capturar()) {
-        std::fprintf(stderr, "ERRO: falha ao capturar a regiao calibrada. Recalibre.\n");
-        return 1;
-    }
-    int posicaoAnterior = classificar(capBadge, cal).value_or(0);
+    LeitorBadge leitor(cal);
+    int posicaoAnterior = leitor.posicaoAtual();
     std::printf("posicao inicial: %s\n", nomePosicao(posicaoAnterior).c_str());
     std::printf("\nRodando. Feche a janela de teste (ou CTRL+C aqui) pra sair.\n");
 
@@ -248,9 +302,9 @@ int modoRodar() {
     // principal fica livre pra bombear mensagens da janela de teste
     // (Compra/Venda/Zerar), que manda o atalho manualmente a qualquer
     // momento, sem interromper a leitura.
-    std::thread threadLeitura([&capBadge, &cal, origem, destino, posicaoAnterior, tamanhoMaximo]() mutable {
+    std::thread threadLeitura([&leitor, origem, destino, posicaoAnterior, tamanhoMaximo]() mutable {
         while (true) {
-            int nova = aguardarProximaPosicao(capBadge, cal, origem);
+            int nova = leitor.aguardarProxima(origem);
 
             for (const Evento& evento : transicao(posicaoAnterior, nova)) {
                 char tecla = (evento.comando == Comando::Compra) ? 'C' : (evento.comando == Comando::Venda) ? 'V' : 'A';

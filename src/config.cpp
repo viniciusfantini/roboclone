@@ -18,6 +18,16 @@ bool salvarCalibracao(const Calibracao& c, const std::string& caminhoBase) {
         f << "badge.altura=" << c.regiaoBadge.altura << "\n";
         f << "tolerancia=" << c.tolerancia << "\n";
         f << "quantidadeReferencias=" << c.referencias.size() << "\n";
+        f << "temReplay=" << (c.temReplay ? 1 : 0) << "\n";
+        f << "marcador.x=" << c.regiaoMarcadorReplay.x << "\n";
+        f << "marcador.y=" << c.regiaoMarcadorReplay.y << "\n";
+        f << "marcador.largura=" << c.regiaoMarcadorReplay.largura << "\n";
+        f << "marcador.altura=" << c.regiaoMarcadorReplay.altura << "\n";
+        f << "corReplay.b=" << (int)c.corReplayB << "\n";
+        f << "corReplay.g=" << (int)c.corReplayG << "\n";
+        f << "corReplay.r=" << (int)c.corReplayR << "\n";
+        f << "toleranciaCorReplay=" << c.toleranciaCorReplay << "\n";
+        f << "deslocamentoReplayY=" << c.deslocamentoReplayY << "\n";
     }
 
     std::ofstream fr(caminhoRefs(caminhoBase), std::ios::trunc | std::ios::binary);
@@ -51,6 +61,17 @@ bool carregarCalibracao(Calibracao& c, const std::string& caminhoBase) {
     c.regiaoBadge.altura = (int)valores["badge.altura"];
     c.tolerancia = valores["tolerancia"];
     size_t quantidadeReferencias = (size_t)valores["quantidadeReferencias"];
+
+    c.temReplay = valores["temReplay"] != 0;
+    c.regiaoMarcadorReplay.x = (int)valores["marcador.x"];
+    c.regiaoMarcadorReplay.y = (int)valores["marcador.y"];
+    c.regiaoMarcadorReplay.largura = (int)valores["marcador.largura"];
+    c.regiaoMarcadorReplay.altura = (int)valores["marcador.altura"];
+    c.corReplayB = (BYTE)valores["corReplay.b"];
+    c.corReplayG = (BYTE)valores["corReplay.g"];
+    c.corReplayR = (BYTE)valores["corReplay.r"];
+    c.toleranciaCorReplay = valores["toleranciaCorReplay"];
+    c.deslocamentoReplayY = (int)valores["deslocamentoReplayY"];
 
     size_t bytesBitmap = (size_t)c.regiaoBadge.largura * c.regiaoBadge.altura * 4;
     if (bytesBitmap == 0 || quantidadeReferencias == 0) return false;

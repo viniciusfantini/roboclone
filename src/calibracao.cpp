@@ -38,6 +38,14 @@ int perguntarNivelMaximo() {
     return valor > 0 ? valor : NIVEL_MAXIMO_PADRAO;
 }
 
+bool perguntarSimNao(const std::string& pergunta) {
+    std::printf("\n%s (s/N): ", pergunta.c_str());
+    std::fflush(stdout);
+    std::string linha;
+    std::getline(std::cin, linha);
+    return !linha.empty() && (linha[0] == 's' || linha[0] == 'S');
+}
+
 } // namespace
 
 bool rodarCalibracao(Calibracao& out) {
@@ -117,6 +125,51 @@ bool rodarCalibracao(Calibracao& out) {
                     ">> %d, diferenca=%lld) -- pode confundir esses dois niveis. Confira se apontou\n"
                     ">> certo pro badge, ou recalibre se a leitura sair errada no modo debug.\n",
                     idxA, idxB, menor);
+    }
+
+    // suporte opcional a modo Replay do Profit (achado ao vivo, 15/09/2026:
+    // a barra amarela do Replay empurra o badge pra baixo por um
+    // deslocamento fixo -- medido em 24px numa maquina, mas aqui e'
+    // MEDIDO na tela de quem esta' calibrando, nao chumbado no codigo,
+    // porque pode variar com DPI/tema/monitor).
+    out.temReplay = perguntarSimNao(
+        "Voce as vezes usa o modo REPLAY do Profit nessa janela de origem\n"
+        "(a barra amarela com play/pause, que empurra o layout pra baixo)?\n"
+        "Se sim, vamos medir o deslocamento agora pra detectar automatico");
+
+    if (out.temReplay) {
+        aguardarEnter("ligue o modo Replay AGORA nessa janela (a barra amarela deve aparecer) e confirme");
+
+        POINT m1 = aguardarClique("canto SUPERIOR ESQUERDO da area AMARELA/DOURADA da barra do Replay");
+        if (m1.x < 0 && m1.y < 0) { out.temReplay = false; return true; }
+        POINT m2 = aguardarClique("canto INFERIOR DIREITO dessa area amarela");
+        if (m2.x < 0 && m2.y < 0) { out.temReplay = false; return true; }
+        out.regiaoMarcadorReplay = regiaoDeDoisPontos(m1, m2);
+
+        CapturaRegiao capMarcador(out.regiaoMarcadorReplay);
+        if (!capMarcador.capturar()) {
+            std::printf(">> falha ao capturar a area do marcador -- Replay NAO configurado.\n");
+            out.temReplay = false;
+            return true;
+        }
+        capMarcador.corMedia(out.corReplayB, out.corReplayG, out.corReplayR);
+        out.toleranciaCorReplay = 40; // heuristica -- so' 1 referencia de cor, sem par pra comparar
+
+        POINT novoTopo = aguardarClique(
+            "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay ligado "
+            "(deve estar mais baixo que antes)");
+        if (novoTopo.x < 0 && novoTopo.y < 0) { out.temReplay = false; return true; }
+        out.deslocamentoReplayY = (int)(novoTopo.y - b1.y);
+
+        std::printf(">> deslocamento medido: %d px (cor do Replay: BGR(%d,%d,%d))\n",
+                    out.deslocamentoReplayY, out.corReplayB, out.corReplayG, out.corReplayR);
+        std::printf(">> pode desligar o Replay agora.\n");
+
+        if (out.deslocamentoReplayY <= 0) {
+            std::printf(">> AVISO: deslocamento veio zero ou negativo -- clique errado? Replay\n"
+                        ">> NAO sera' aplicado (desligado pra essa calibracao).\n");
+            out.temReplay = false;
+        }
     }
 
     return true;

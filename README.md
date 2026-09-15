@@ -179,6 +179,17 @@ ficou mais parecido entre si — se a diferença for pequena demais, dois
 níveis vizinhos (ex. 3C e 4C) podem se confundir; recalibre apontando
 mais preciso pro badge.
 
+7. **Opcional — modo Replay do Profit**: pergunta se você usa o Replay
+   (a barra amarela com play/pause) na janela de origem. Se sim: pede pra
+   ligar o Replay, aponta a área amarela da barra (2 cliques) e o novo
+   canto superior esquerdo do badge com o Replay ligado (1 clique) — o
+   deslocamento é MEDIDO na sua tela (achado ao vivo, 15/09/2026: mede
+   24px numa máquina, mas varia com DPI/tema, por isso não é um número
+   fixo no código). Depois disso, `debug`/`rodar` detectam sozinhos se o
+   Replay está ligado ou não a cada momento e ajustam a região de leitura
+   automaticamente — não precisa recalibrar toda vez que ligar/desligar o
+   Replay.
+
 **Precisa recalibrar se**: a janela do Profit mudar de posição na tela,
 for redimensionada, ou o zoom/tema mudar (a região é guardada em
 coordenadas absolutas de tela).
@@ -262,6 +273,30 @@ Como rede de segurança pra esse (e qualquer outro) cenário de loop, o
 imediatamente (a leitura continua rodando, mas não manda mais atalho
 sozinho) e avisa bem visível no console. Os botões da janela de teste
 continuam funcionando normalmente pra você zerar manualmente.
+
+## Modo Replay do Profit: detecção automática de deslocamento
+
+O Replay do Profit (barra amarela com play/pause, usada pra reproduzir
+pregões passados) empurra todo o layout da janela pra baixo por um
+deslocamento fixo em pixels enquanto está ligado. Isso fazia a
+calibração do badge de posição ficar errada dependendo de o Replay estar
+ligado ou não na hora de calibrar.
+
+Resolvido calibrando (passo opcional, ver `calibrar` acima) uma área que
+fica amarela quando o Replay liga, mais o quanto o badge desce nesse
+momento — os dois **medidos na sua tela**, não chumbados no código.
+`debug`/`rodar` verificam essa área a cada leitura e trocam sozinhos
+entre a posição normal e a deslocada, imprimindo `[info] modo Replay
+LIGADO/DESLIGADO` no console quando alternam. Sem esse passo de
+calibração (respondeu não, ou pulou), o comportamento é o de antes — só
+a região normal, sem ajuste nenhum.
+
+**Limitação**: a detecção usa só 1 referência de cor (a área amarela do
+Replay) com uma tolerância heurística fixa (40) — como não há uma 2ª
+referência pra contrastar, isso pode falhar se o fundo do painel, por
+algum tema/skin diferente, também for amarelado. Se `[info] modo Replay
+LIGADO` aparecer sem o Replay estar ligado de verdade (ou vice-versa),
+recalibre apontando uma área mais exclusivamente amarela da barra.
 
 ## Limitações conhecidas / próximos passos
 

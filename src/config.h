@@ -7,6 +7,12 @@
 // confundir com o digito mudando de forma). Agora, com uma referencia
 // exata por quantidade, comparar o BADGE INTEIRO funciona direto -- nao
 // precisa mais separar regiao da letra.
+//
+// Suporte a modo Replay do Profit (15/09/2026): o Replay insere uma barra
+// amarela no topo da janela, empurrando todo o layout (inclusive o badge
+// de posicao) pra baixo por um deslocamento fixo -- medido ao vivo em
+// 24px numa maquina, mas guardado como algo MEDIDO na calibracao (nao
+// chumbado no codigo), porque pode variar com DPI/tema/monitor.
 #pragma once
 
 #include "captura_tela.h"
@@ -22,6 +28,14 @@ struct Calibracao {
     RegiaoTela regiaoBadge;
     std::vector<ReferenciaBadge> referencias;
     long long tolerancia = 0;
+
+    // deslocamento automatico pro modo Replay -- opcional (temReplay=false
+    // se o operador pulou essa parte da calibracao).
+    bool temReplay = false;
+    RegiaoTela regiaoMarcadorReplay;   // area que fica na cor do Replay quando ligado
+    BYTE corReplayB = 0, corReplayG = 0, corReplayR = 0;
+    long long toleranciaCorReplay = 0;
+    int deslocamentoReplayY = 0;       // quanto o badge desce quando o Replay liga
 };
 
 // grava 2 arquivos: "<caminhoBase>" (texto, regiao+tolerancia+contagem) e
