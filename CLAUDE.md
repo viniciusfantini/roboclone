@@ -212,6 +212,16 @@ por orientação (sem mudança de lógica): `calibrar` agora pergunta o
 nível máximo ANTES de pedir os cliques do badge, e avisa explicitamente
 pra desenhar a região com folga quando o nível for ≥ 10.
 
+**Calibração por detecção automática (15/09/2026)**: dono pediu pra não
+precisar ficar apertando ENTER a cada nível de contrato durante a
+calibração — só a operação (compra/venda/zerar) já devia bastar, o
+programa detecta a mudança sozinho. Implementado (`aguardarMudancaBadge`
+em `calibracao.cpp`): fica vigiando o badge (mesmo polling de 50ms usado
+em produção), assim que muda espera acomodar (~300ms) e captura,
+avançando pro próximo nível sozinho. Só o primeiro passo (confirmar que
+está flat) continua pedindo ENTER, porque não há "mudança" pra esperar
+se a posição já estiver zerada desde antes.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

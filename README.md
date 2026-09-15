@@ -165,18 +165,23 @@ roboclone.exe rodar
    mostrando só 1 dígito ou vazio, senão o "10" pode ficar cortado
    quando a posição passar de 9. O programa avisa isso na tela quando
    você pedir nível ≥ 10.
-3. Confirma (ENTER) com a posição **zerada/flat**.
-4. Compra 1 contrato a mercado, confirma (ENTER) — repete até o nível
-   máximo escolhido (compra mais 1 a cada vez).
-5. Zera a posição de teste, confirma (ENTER).
-6. Vende 1 contrato a mercado, confirma (ENTER) — repete até o nível
-   máximo (vende mais 1 a cada vez).
+3. Confirma (ENTER) com a posição **zerada/flat** — esse é o único passo
+   que pede ENTER, porque é o ponto de partida (sem "mudança" nenhuma
+   pra esperar se você já estiver flat).
+4. Compra 1 contrato a mercado — **não precisa confirmar nada**: o
+   programa fica vigiando o badge e detecta sozinho quando você fizer a
+   operação, espera acomodar (~300ms) e já captura, pedindo a próxima
+   automaticamente. Repete até o nível máximo escolhido.
+5. Zera a posição de teste — detectado automaticamente, igual acima.
+6. Vende 1 contrato a mercado — detectado automaticamente, repete até o
+   nível máximo.
 
 Do passo 3 em diante faz operação de verdade — **use a conta SIMULADORA**
 pra calibrar, mesmo que a leitura em produção depois seja de outra conta.
-Pra nível máximo 5 são 12 confirmações (1 flat + 5 compra + 1 flat + 5
-venda); ajuste o nível pro tamanho de posição que você realmente espera
-usar (calibrar até 10 não custa muito mais que até 5).
+Ajuste o nível pro tamanho de posição que você realmente espera usar
+(calibrar até 10 não custa muito mais que até 5, já que agora é só ir
+fazendo as operações em sequência, sem parar pra confirmar cada uma).
+ESC a qualquer momento cancela a calibração.
 
 Salva `calibracao.cfg` (região + tolerância + contagem, texto) e
 `calibracao.cfg.refs` (os bitmaps de referência, binário), os dois ao

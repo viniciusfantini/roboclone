@@ -6,10 +6,15 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <thread>
+#include <chrono>
+#include <windows.h>
 
 namespace {
 
 constexpr int NIVEL_MAXIMO_PADRAO = 5;
+constexpr int POLL_CALIBRACAO_MS = 50;
+constexpr int ACOMODAR_CALIBRACAO_MS = 300;
 
 RegiaoTela regiaoDeDoisPontos(POINT a, POINT b) {
     RegiaoTela r;
@@ -46,6 +51,31 @@ bool perguntarSimNao(const std::string& pergunta) {
     return !linha.empty() && (linha[0] == 's' || linha[0] == 'S');
 }
 
+// mostra a instrucao e fica vigiando o badge sozinho -- assim que
+// detectar mudanca (o operador fez a acao pedida), espera acomodar e
+// recaptura, sem precisar de ENTER. Devolve false se ESC for apertado
+// (cancela a calibracao).
+bool aguardarMudancaBadge(CapturaRegiao& cap, const std::string& instrucao) {
+    std::printf("\n>> %s\n>>   (deteccao automatica -- so' faca a operacao, sem precisar\n"
+                ">>   confirmar aqui; ESC cancela)\n", instrucao.c_str());
+    std::fflush(stdout);
+
+    while (true) {
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            std::printf(">> cancelado.\n");
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_CALIBRACAO_MS));
+        if (!cap.capturar()) continue;
+        if (cap.mudouDesdeUltimaCaptura()) break;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(ACOMODAR_CALIBRACAO_MS));
+    cap.capturar();
+    std::printf(">> mudanca detectada, capturado.\n");
+    return true;
+}
+
 } // namespace
 
 bool rodarCalibracao(Calibracao& out) {
@@ -78,7 +108,10 @@ bool rodarCalibracao(Calibracao& out) {
     out.referencias.clear();
 
     std::printf("\nAgora vamos construir a posicao 1 contrato de cada vez, dos dois\n");
-    std::printf("lados. Use a conta SIMULADORA -- isso faz operacao de verdade.\n");
+    std::printf("lados. Use a conta SIMULADORA -- isso faz operacao de verdade. A\n");
+    std::printf("partir daqui o programa detecta sozinho quando voce faz cada\n");
+    std::printf("operacao -- so' o primeiro passo (ficar zerado) precisa de ENTER,\n");
+    std::printf("porque nao ha' \"mudanca\" pra esperar se voce ja' estiver flat.\n");
 
     aguardarEnter("deixe a posicao ZERADA/FLAT agora");
     if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
@@ -87,20 +120,18 @@ bool rodarCalibracao(Calibracao& out) {
     for (int i = 1; i <= nivelMaximo; ++i) {
         char instrucao[160];
         std::snprintf(instrucao, sizeof(instrucao),
-                      "compre mais 1 contrato a mercado (fique comprado, total %d) e confirme", i);
-        aguardarEnter(instrucao);
-        if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
+                      "compre mais 1 contrato a mercado (fique comprado, total %d)", i);
+        if (!aguardarMudancaBadge(cap, instrucao)) return false;
         out.referencias.push_back({i, cap.pixelsBrutos()});
     }
 
-    aguardarEnter("zere a posicao de teste (fique FLAT de novo) e confirme");
+    if (!aguardarMudancaBadge(cap, "zere a posicao de teste (fique FLAT de novo)")) return false;
 
     for (int i = 1; i <= nivelMaximo; ++i) {
         char instrucao[160];
         std::snprintf(instrucao, sizeof(instrucao),
-                      "venda mais 1 contrato a mercado (fique vendido, total %d) e confirme", i);
-        aguardarEnter(instrucao);
-        if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
+                      "venda mais 1 contrato a mercado (fique vendido, total %d)", i);
+        if (!aguardarMudancaBadge(cap, instrucao)) return false;
         out.referencias.push_back({-i, cap.pixelsBrutos()});
     }
 
