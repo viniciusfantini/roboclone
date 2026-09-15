@@ -155,13 +155,43 @@ completo de verdade. Duas correções ainda saíram desse teste:
    para (a leitura continua, só não manda mais atalho sozinho), evitando
    um loop como esse rodar sem limite de novo.
 
+**Teste ao vivo de 15/09/2026 (2º loop, dessa vez com duas contas/janelas
+DIFERENTES de verdade)**: o dono corrigiu uma suposição errada da sessão
+anterior — o loop de 27 contratos NÃO foi origem reagindo ao próprio
+envio (origem e destino eram janelas/contas separadas). Causa real,
+inferida pelo padrão de timestamps no log (várias detecções em sequência,
+no ritmo de tick de preço): a região do badge calibrada provavelmente
+incluía campos vizinhos que mudam sozinhos com o preço (ex. "Resultado",
+"Res. Aberto", que ficam coladinhos do "Qtd" na boleta) — qualquer tick
+de preço registrava como "mudou, ainda parece o mesmo lado" e disparava
+reforço falso.
+
+Isso expôs um problema de design mais fundo, que o dono pediu pra
+resolver: calibrar só 3 referências genéricas (vazio/compra/venda,
+comparando só a LETRA) não sabia distinguir REFORÇO de REDUÇÃO PARCIAL
+(ex. 7C→6C continua "comprado", a letra não muda) — uma redução seria
+lida errado como reforço, mandando a tecla ERRADA (compra em vez de
+venda). Redesenhado (15/09/2026): calibração agora captura uma referência
+de bitmap **por quantidade exata** (vazio, 1..N comprado, 1..N vendido —
+pergunta o N, padrão 5), comparando o BADGE INTEIRO contra todas (não
+precisa mais da região separada da letra). `sinal.h` mudou de estado
+enum (Flat/Comprado/Vendido) pra um INTEIRO com sinal (posição real), e
+`transicao()` agora distingue reforço de redução parcial (redução manda
+a tecla oposta ao lado atual, sem zerar — o Profit resolve sozinho,
+igual abrir do lado oposto resolveria). Rótulos de debug novos: `c`/`v`
+minúsculo pra redução parcial (maiúsculo continua abertura/reforço).
+Leituras fora do que foi calibrado (ex. 8 contratos com calibração até 7)
+agora ficam so' como aviso ignorado, nunca mais viram reforço/redução por
+engano.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`
 (`calibrar`/`debug`/`rodar`/`testaratalho`), ver seção acima e
 `README.md`. O envio de atalho (ambos os mecanismos) já foi validado ao
-vivo contra o Profit de verdade. Falta: um teste de ponta a ponta com
-origem e destino em janelas DIFERENTES (todos os testes ao vivo até aqui
-foram com `testaratalho` isolado ou com origem==destino, que mascara/
-amplifica o comportamento real); depois, se/quando precisar, decidir
-entre VPN+TCP direto vs. relay pra levar isso pra duas máquinas.
+vivo contra o Profit de verdade, com duas janelas/contas separadas
+inclusive. A leitura por quantidade exata (redesenho de 15/09) ainda
+**não foi validada ao vivo** — falta recalibrar com o novo fluxo (pede N
+níveis por lado) e confirmar no `debug` que reforço/redução/zeragem saem
+certos antes de confiar no `rodar` de novo. Depois, se/quando precisar,
+decidir entre VPN+TCP direto vs. relay pra levar isso pra duas máquinas.

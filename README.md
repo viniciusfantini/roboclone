@@ -36,44 +36,44 @@ da verdade, em vez de inferir.
 
 ## Lógica de sinal (`src/sinal.h`)
 
-Pura, sem tela — recebe o estado ANTERIOR e o NOVO (já classificados por
-quem lê a tela) e devolve os comandos a mandar:
+Pura, sem tela — recebe a posição ANTERIOR e a NOVA (inteiros com sinal:
+positivo = comprado N, negativo = vendido N, 0 = flat; já classificados
+por quem lê a tela) e devolve os comandos a mandar, um por unidade de
+diferença:
 
-| estado anterior | estado novo | comando(s) |
+| posição anterior | posição nova | comando(s) |
 |---|---|---|
-| flat | comprado | COMPRA |
-| flat | vendido | VENDA |
-| comprado | comprado (badge mudou, ex. 1C→2C) | COMPRA (reforço) |
-| vendido | vendido (badge mudou, ex. 1V→2V) | VENDA (reforço) |
-| comprado ou vendido | flat | ZERAR |
-| comprado | vendido (virada direta) | ZERAR, depois VENDA |
-| vendido | comprado (virada direta) | ZERAR, depois COMPRA |
+| 0 (flat) | +N (comprado) | COMPRA × N |
+| 0 (flat) | −N (vendido) | VENDA × N |
+| +A (comprado) | +B, B>A (reforço) | COMPRA × (B−A) |
+| +A (comprado) | +B, B<A (**redução parcial**) | VENDA × (A−B) |
+| −A (vendido) | −B, B>A (reforço) | VENDA × (B−A) |
+| −A (vendido) | −B, B<A (**redução parcial**) | COMPRA × (A−B) |
+| qualquer não-zero | 0 | ZERAR |
+| comprado | vendido (virada direta) | ZERAR, depois COMPRA/VENDA × N |
 
-## Leitura do badge (`src/captura_tela.h`, `src/main.cpp`)
+A distinção reforço vs. redução parcial existe pra decidir o RÓTULO
+(debug) e pra nunca precisar de "zerar" numa saída que só reduziu — a
+TECLA enviada já é naturalmente a certa nos dois casos (reduzir um
+comprado manda venda, igual abrir um vendido; é só uma ordem a mercado
+normal, o Profit resolve sozinho).
 
-Duas regiões, não uma (mudança de 11/09/2026 — achado ao vivo: 1V → 2V
-não disparava reforço na primeira versão):
+## Leitura do badge (`src/captura_tela.h`, `src/config.h`, `src/main.cpp`)
 
-- **badge inteiro** (número + letra): só serve pra perceber "mudou algo"
-  e decidir se **está FLAT**, comparando contra a referência de vazio. Um
-  badge vazio tem aparência bem diferente de "tem alguma coisa", então
-  funciona bem pra essa distinção binária.
-- **só a letra** (C/V, sem o número): decide o **lado** quando não está
-  flat. O número muda de forma quando a quantidade muda (1→2→3...), o que
-  fazia o badge inteiro "1V" parecer diferente demais de "2V" pra bater
-  com a referência — a letra sozinha não muda de forma com a quantidade,
-  então reforço (mesmo lado, número mudou) não se confunde com "não
-  reconheci".
+Uma referência de bitmap **por quantidade exata**: vazio (0), comprado
+1..N, vendido 1..N (mudança de 15/09/2026 — antes eram só 3 referências
+genéricas — vazio/compra/venda —, o que causava dois problemas: 1V→2V às
+vezes não disparava reforço porque o dígito muda de forma; e uma REDUÇÃO
+parcial, ex. 7C→6C, ficava indistinguível de reforço porque o lado/letra
+não muda quando a posição só diminui sem zerar).
 
-Cada comparação é **bitmap inteiro** da região (pixel a pixel, soma de
-diferenças absolutas) contra as referências capturadas na calibração, não
-só cor média — importa porque o badge de comprado e o de vendido podem
-ter o MESMO fundo, só mudando a letra.
-
-Não lê o número exato (1, 2, 3...) — só se mudou mantendo o mesmo lado
-(reforço) ou não. O "tamanho da posição" que aparece no `debug`/`rodar` é
-um **contador interno** (começa em 1 na abertura, +1 a cada reforço
-reconhecido, volta a 0 ao zerar) — não vem de ler o número na tela.
+Cada leitura compara o bitmap capturado contra TODAS as referências
+calibradas (pixel a pixel, soma de diferenças absolutas) e escolhe a mais
+parecida, desde que dentro da tolerância — a quantidade (com sinal) da
+referência vencedora é a posição lida. Uma posição além do que foi
+calibrado (ex. 8 contratos, se só calibrou até 7) não bate com nenhuma
+referência e é ignorada com aviso — calibre até um nível confortavelmente
+acima do que você espera usar.
 
 ## Duas janelas do Profit abertas ao mesmo tempo: origem por POSIÇÃO, destino por IDENTIDADE
 
@@ -154,22 +154,30 @@ roboclone.exe rodar
 
 1. Clique no canto superior esquerdo, depois no inferior direito, do
    **badge inteiro** de posição ("Qtd", o retângulo tipo `1C` — ver
-   `imagem/boleta.png`).
-2. Clique no canto superior esquerdo, depois no inferior direito, **só da
-   LETRA** (C ou V) dentro desse badge, sem pegar o número — normalmente
-   o caractere mais à direita.
+   `imagem/boleta.png`). Aponte SÓ pro badge — não inclua campos vizinhos
+   que mudam sozinhos com o preço (ex. "Resultado", "Res. Aberto"), senão
+   qualquer variação de preço vira leitura falsa.
+2. Responde até quantos contratos calibrar de cada lado (ENTER usa o
+   padrão, 5 — ou seja, reconhece de 1 a 5 comprado e de 1 a 5 vendido).
 3. Confirma (ENTER) com a posição **zerada/flat**.
-4. Compra 1 contrato a mercado (fica comprado), confirma (ENTER).
-5. Zera e vende 1 contrato a mercado (fica vendido), confirma (ENTER).
+4. Compra 1 contrato a mercado, confirma (ENTER) — repete até o nível
+   máximo escolhido (compra mais 1 a cada vez).
+5. Zera a posição de teste, confirma (ENTER).
+6. Vende 1 contrato a mercado, confirma (ENTER) — repete até o nível
+   máximo (vende mais 1 a cada vez).
 
-Os passos 3-5 fazem operação de verdade — **use a conta SIMULADORA** pra
-calibrar, mesmo que a leitura em produção depois seja de outra conta.
+Do passo 3 em diante faz operação de verdade — **use a conta SIMULADORA**
+pra calibrar, mesmo que a leitura em produção depois seja de outra conta.
+Pra nível máximo 5 são 12 confirmações (1 flat + 5 compra + 1 flat + 5
+venda); ajuste o nível pro tamanho de posição que você realmente espera
+usar (calibrar até 10 não custa muito mais que até 5).
 
-Salva `calibracao.cfg` (as 2 regiões + tolerâncias, texto) e
+Salva `calibracao.cfg` (região + tolerância + contagem, texto) e
 `calibracao.cfg.refs` (os bitmaps de referência, binário), os dois ao
-lado do executável. O programa avisa no console se as referências
-saírem parecidas demais entre si (provável clique no lugar errado, ou a
-região da letra pegou o número junto).
+lado do executável. O programa avisa no console qual par de quantidades
+ficou mais parecido entre si — se a diferença for pequena demais, dois
+níveis vizinhos (ex. 3C e 4C) podem se confundir; recalibre apontando
+mais preciso pro badge.
 
 **Precisa recalibrar se**: a janela do Profit mudar de posição na tela,
 for redimensionada, ou o zoom/tema mudar (a região é guardada em
@@ -187,16 +195,18 @@ foi lido, junto com o horário:
 | abre vendido | `V` |
 | reforço comprado | `CC` |
 | reforço vendido | `VV` |
-| zeragem/alvo | `Z` |
-| virada (comprado→vendido ou vice-versa) | `Z` seguido de `C`/`V` |
+| **redução parcial** de comprado (ex. 7C→6C, manda venda) | `v` (minúsculo) |
+| **redução parcial** de vendido (ex. 7V→6V, manda compra) | `c` (minúsculo) |
+| zeragem total | `Z` |
+| virada (comprado→vendido ou vice-versa) | `Z` seguido de `C`/`V` (× N se abrir mais de 1) |
 
 Rode `roboclone.exe debug`, aponte pro bloco de notas, e vá mandando
 ordens manualmente na conta calibrada — cada mudança de posição deve
-aparecer como uma linha `HH:MM:SS.mmm ROTULO (tam N)` no bloco de notas
-(`N` = tamanho da posição pelo contador interno, não lido da tela — ver
-seção acima). No console (`[debug] ...`) também aparece o comando
-equivalente (COMPRA/VENDA/ZERAR) que seria mandado no `rodar`. Confira se
-bate com o que você mandou antes de confiar no `rodar`.
+aparecer como uma linha `HH:MM:SS.mmm ROTULO` no bloco de notas. No
+console (`[debug] ...`) também aparece a posição antes/depois (ex.
+"COMPRADO 7 -> COMPRADO 6") e o comando equivalente (COMPRA/VENDA/ZERAR)
+que seria mandado no `rodar`. Confira se bate com o que você mandou antes
+de confiar no `rodar`.
 
 A escrita usa UI Automation (não simula tecla) — funciona com qualquer
 campo de texto que exponha o padrão Value/Text de acessibilidade (bloco
@@ -258,14 +268,15 @@ continuam funcionando normalmente pra você zerar manualmente.
 - Calibração é em coordenadas absolutas de tela — quebra se a janela de
   origem mover. Melhoria futura: capturar relativo ao client area da
   janela (`GetClientRect`/`ClientToScreen`), recalculando a cada poll.
-- Não distingue quantidade exata (1C vs 2C vs 3C) — só "mesmo lado,
-  mudou" (reforço); o tamanho mostrado no debug é contado por software,
-  não lido da tela.
-- O clique do **badge inteiro** (passo 1 da calibração) precisa cobrir SÓ
-  o badge "Qtd", sem incluir campos vizinhos que mudam sozinhos com o
-  preço (ex.: "Resultado", "Res. Aberto") — se incluir, qualquer variação
-  desses campos dispara um "reforço" falso (o badge inteiro só é usado
-  pra detectar "mudou"/"ficou flat", então qualquer mudança nele conta).
+- Posição além do nível máximo calibrado (ex. 8 contratos, calibrado só
+  até 7) não bate com nenhuma referência — fica ignorada com aviso no
+  console em vez de agir errado. Recalibrar com um nível maior resolve.
+- O clique do **badge** (passo 1 da calibração) precisa cobrir SÓ o badge
+  "Qtd", sem incluir campos vizinhos que mudam sozinhos com o preço (ex.:
+  "Resultado", "Res. Aberto") — se incluir, qualquer variação de preço
+  vira uma leitura que não bate com nenhuma referência exata (fica só
+  como aviso ignorado agora, em vez de virar reforço falso como na
+  versão anterior — mas ainda assim é ruído a menos).
 - HWND da janela de destino não é persistido entre execuções — normal,
   precisa clicar de novo toda vez que o Profit de destino reiniciar
   (mesma limitação documentada no `b3_money_copy`).

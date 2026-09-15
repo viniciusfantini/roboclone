@@ -2,6 +2,7 @@
 #include <fstream>
 #include <map>
 #include <cstdlib>
+#include <cstdint>
 
 namespace {
 std::string caminhoRefs(const std::string& caminhoBase) { return caminhoBase + ".refs"; }
@@ -15,22 +16,17 @@ bool salvarCalibracao(const Calibracao& c, const std::string& caminhoBase) {
         f << "badge.y=" << c.regiaoBadge.y << "\n";
         f << "badge.largura=" << c.regiaoBadge.largura << "\n";
         f << "badge.altura=" << c.regiaoBadge.altura << "\n";
-        f << "letra.x=" << c.regiaoLetra.x << "\n";
-        f << "letra.y=" << c.regiaoLetra.y << "\n";
-        f << "letra.largura=" << c.regiaoLetra.largura << "\n";
-        f << "letra.altura=" << c.regiaoLetra.altura << "\n";
-        f << "toleranciaVazio=" << c.toleranciaVazio << "\n";
-        f << "toleranciaLado=" << c.toleranciaLado << "\n";
+        f << "tolerancia=" << c.tolerancia << "\n";
+        f << "quantidadeReferencias=" << c.referencias.size() << "\n";
     }
 
     std::ofstream fr(caminhoRefs(caminhoBase), std::ios::trunc | std::ios::binary);
     if (!fr) return false;
-    auto escrever = [&](const std::vector<BYTE>& buf) {
-        fr.write(reinterpret_cast<const char*>(buf.data()), (std::streamsize)buf.size());
-    };
-    escrever(c.refVazioBadge);
-    escrever(c.refCompraLetra);
-    escrever(c.refVendaLetra);
+    for (const auto& ref : c.referencias) {
+        int32_t q = ref.quantidade;
+        fr.write(reinterpret_cast<const char*>(&q), sizeof(q));
+        fr.write(reinterpret_cast<const char*>(ref.bitmap.data()), (std::streamsize)ref.bitmap.size());
+    }
     return (bool)fr;
 }
 
@@ -53,28 +49,27 @@ bool carregarCalibracao(Calibracao& c, const std::string& caminhoBase) {
     c.regiaoBadge.y = (int)valores["badge.y"];
     c.regiaoBadge.largura = (int)valores["badge.largura"];
     c.regiaoBadge.altura = (int)valores["badge.altura"];
-    c.regiaoLetra.x = (int)valores["letra.x"];
-    c.regiaoLetra.y = (int)valores["letra.y"];
-    c.regiaoLetra.largura = (int)valores["letra.largura"];
-    c.regiaoLetra.altura = (int)valores["letra.altura"];
-    c.toleranciaVazio = valores["toleranciaVazio"];
-    c.toleranciaLado = valores["toleranciaLado"];
+    c.tolerancia = valores["tolerancia"];
+    size_t quantidadeReferencias = (size_t)valores["quantidadeReferencias"];
 
-    size_t bytesBadge = (size_t)c.regiaoBadge.largura * c.regiaoBadge.altura * 4;
-    size_t bytesLetra = (size_t)c.regiaoLetra.largura * c.regiaoLetra.altura * 4;
-    if (bytesBadge == 0 || bytesLetra == 0) return false;
+    size_t bytesBitmap = (size_t)c.regiaoBadge.largura * c.regiaoBadge.altura * 4;
+    if (bytesBitmap == 0 || quantidadeReferencias == 0) return false;
 
     std::ifstream fr(caminhoRefs(caminhoBase), std::ios::binary);
     if (!fr) return false;
 
-    auto ler = [&](std::vector<BYTE>& buf, size_t bytes) -> bool {
-        buf.resize(bytes);
-        fr.read(reinterpret_cast<char*>(buf.data()), (std::streamsize)bytes);
-        return (bool)fr;
-    };
-
-    if (!ler(c.refVazioBadge, bytesBadge)) return false;
-    if (!ler(c.refCompraLetra, bytesLetra)) return false;
-    if (!ler(c.refVendaLetra, bytesLetra)) return false;
+    c.referencias.clear();
+    c.referencias.reserve(quantidadeReferencias);
+    for (size_t i = 0; i < quantidadeReferencias; ++i) {
+        int32_t q = 0;
+        fr.read(reinterpret_cast<char*>(&q), sizeof(q));
+        if (!fr) return false;
+        ReferenciaBadge ref;
+        ref.quantidade = q;
+        ref.bitmap.resize(bytesBitmap);
+        fr.read(reinterpret_cast<char*>(ref.bitmap.data()), (std::streamsize)bytesBitmap);
+        if (!fr) return false;
+        c.referencias.push_back(std::move(ref));
+    }
     return true;
 }

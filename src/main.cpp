@@ -1,16 +1,17 @@
 // main.cpp -- roboclone: le o indicador de posicao ("Qtd", ex.: "1C"/
 // "2V" -- ver imagem/boleta.png) do Profit na conta de ORIGEM (via
-// comparacao de bitmap, sem OCR) e manda o comando equivalente (compra/
-// venda/zerar) por atalho de teclado pra uma segunda janela do Profit,
-// numa conta SIMULADORA.
+// comparacao de bitmap contra referencias POR QUANTIDADE EXATA, sem OCR)
+// e manda o comando equivalente (compra/venda/zerar/reduzir) por atalho
+// de teclado pra uma segunda janela do Profit, numa conta SIMULADORA.
 //
 // Uso:
-//   roboclone.exe calibrar   -- descobre por clique as 2 regioes (badge
-//                                inteiro + so' a letra) e captura as
-//                                referencias (vazio/comprado/vendido)
+//   roboclone.exe calibrar   -- descobre por clique a regiao do badge e
+//                                captura uma referencia por quantidade
+//                                exata (vazio, 1..N comprado, 1..N vendido)
 //   roboclone.exe debug      -- NAO manda atalho nenhum; escreve o rotulo
-//                                lido (C/V/CC/VV/Z) num bloco de notas, pra
-//                                conferir a leitura antes de confiar nela
+//                                lido (C/V/CC/VV/c/v/Z) num bloco de
+//                                notas, pra conferir a leitura antes de
+//                                confiar nela
 //   roboclone.exe rodar      -- roda de verdade (manda atalho de verdade)
 //   roboclone.exe testaratalho -- so' testa o envio do atalho numa janela
 //                                escolhida, sem calibracao nem leitura de
@@ -74,44 +75,39 @@ int perguntarTamanhoMaximoPosicao() {
     return valor;
 }
 
-const char* nomeEstado(EstadoPosicao e) {
-    switch (e) {
-        case EstadoPosicao::Flat: return "FLAT";
-        case EstadoPosicao::Comprado: return "COMPRADO";
-        case EstadoPosicao::Vendido: return "VENDIDO";
-    }
-    return "?";
+std::string nomePosicao(int p) {
+    char buf[32];
+    if (p == 0) return "FLAT";
+    std::snprintf(buf, sizeof(buf), "%s %d", p > 0 ? "COMPRADO" : "VENDIDO", std::abs(p));
+    return buf;
 }
 
-// classifica o estado atual: primeiro checa se o badge INTEIRO bate com
-// "vazio" (flat); se nao bater, classifica o LADO usando so' a regiao da
-// LETRA (nao se confunde com o numero mudando de forma no reforco).
-std::optional<EstadoPosicao> classificar(CapturaRegiao& capBadge, CapturaRegiao& capLetra, const Calibracao& cal) {
-    long long dVazio = capBadge.diferencaPara(cal.refVazioBadge);
-    if (dVazio <= cal.toleranciaVazio) return EstadoPosicao::Flat;
-
-    if (!capLetra.capturar()) return std::nullopt;
-    long long dCompra = capLetra.diferencaPara(cal.refCompraLetra);
-    long long dVenda = capLetra.diferencaPara(cal.refVendaLetra);
-
-    if (dCompra <= cal.toleranciaLado && dCompra <= dVenda) return EstadoPosicao::Comprado;
-    if (dVenda <= cal.toleranciaLado) return EstadoPosicao::Vendido;
-    return std::nullopt;
+// classifica a captura atual contra TODAS as referencias calibradas
+// (vazio + cada quantidade exata dos dois lados) e devolve a mais
+// parecida, se estiver dentro da tolerancia.
+std::optional<int> classificar(CapturaRegiao& capBadge, const Calibracao& cal) {
+    long long menor = -1;
+    int quantidade = 0;
+    for (const auto& ref : cal.referencias) {
+        long long d = capBadge.diferencaPara(ref.bitmap);
+        if (menor < 0 || d < menor) { menor = d; quantidade = ref.quantidade; }
+    }
+    if (menor < 0 || menor > cal.tolerancia) return std::nullopt;
+    return quantidade;
 }
 
 POINT centroRegiao(const RegiaoTela& r) {
     return POINT{ r.x + r.largura / 2, r.y + r.altura / 2 };
 }
 
-// bloqueia ate' detectar uma mudanca de estado reconhecida (o badge mudou
-// E a nova aparencia bate com uma das referencias calibradas). Avisa no
-// console (sem travar) se o badge mudar pra algo nao reconhecido, OU se a
-// janela que esta' fisicamente naquele pedaco de tela agora nao e' mais a
-// janela de ORIGEM esperada (ex.: a janela de destino ficou por cima --
-// sem essa checagem, leria o badge errado, podendo criar um loop lendo as
-// proprias ordens que mandou).
-EstadoPosicao aguardarProximoEstado(CapturaRegiao& capBadge, CapturaRegiao& capLetra,
-                                     const Calibracao& cal, HWND origemEsperada) {
+// bloqueia ate' detectar uma mudanca de posicao reconhecida (o badge
+// mudou E a nova aparencia bate com uma das referencias calibradas).
+// Avisa no console (sem travar) se o badge mudar pra algo nao
+// reconhecido, OU se a janela que esta' fisicamente naquele pedaco de
+// tela agora nao e' mais a janela de ORIGEM esperada (ex.: a janela de
+// destino ficou por cima -- sem essa checagem, leria o badge errado,
+// podendo criar um loop lendo as proprias ordens que mandou).
+int aguardarProximaPosicao(CapturaRegiao& capBadge, const Calibracao& cal, HWND origemEsperada) {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALO_POLL_MS));
 
@@ -132,11 +128,11 @@ EstadoPosicao aguardarProximoEstado(CapturaRegiao& capBadge, CapturaRegiao& capL
         std::this_thread::sleep_for(std::chrono::milliseconds(ESPERA_ACOMODAR_MS));
         capBadge.capturar();
 
-        auto estado = classificar(capBadge, capLetra, cal);
-        if (estado.has_value()) return *estado;
+        auto posicao = classificar(capBadge, cal);
+        if (posicao.has_value()) return *posicao;
 
         std::printf("[aviso] badge mudou mas nao bateu com nenhuma referencia dentro da tolerancia "
-                    "-- ignorado\n");
+                    "-- ignorado (pode ser ruido de campo vizinho, ou posicao alem do calibrado)\n");
     }
 }
 
@@ -161,14 +157,6 @@ int modoCalibrar() {
     return 0;
 }
 
-// atualiza o contador local de tamanho (so' pra exibir/debug -- a logica
-// de comando nao depende dele, so' do lado). Compra/Venda com reforco=true
-// soma 1; sem reforco (abertura) volta pra 1; Zerar volta pra 0.
-void atualizarTamanho(int& tamanho, const Evento& evento) {
-    if (evento.comando == Comando::Zerar) { tamanho = 0; return; }
-    tamanho = evento.reforco ? (tamanho + 1) : 1;
-}
-
 int modoDebug() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
@@ -179,48 +167,44 @@ int modoDebug() {
         return 1;
     }
 
-    HWND blocoDeNotas = escolherJanelaPorClique("bloco de notas (vai receber o rotulo lido: C/V/CC/VV/Z)");
+    HWND blocoDeNotas = escolherJanelaPorClique("bloco de notas (vai receber o rotulo lido: C/V/CC/VV/c/v/Z)");
     if (!blocoDeNotas) {
         std::printf("Nenhuma janela escolhida, saindo.\n");
         return 1;
     }
 
     CapturaRegiao capBadge(cal.regiaoBadge);
-    CapturaRegiao capLetra(cal.regiaoLetra);
-    if (!capBadge.capturar() || !capLetra.capturar()) {
-        std::fprintf(stderr, "ERRO: falha ao capturar as regioes calibradas. Recalibre.\n");
+    if (!capBadge.capturar()) {
+        std::fprintf(stderr, "ERRO: falha ao capturar a regiao calibrada. Recalibre.\n");
         return 1;
     }
-    auto estadoInicial = classificar(capBadge, capLetra, cal);
-    EstadoPosicao estadoAnterior = estadoInicial.value_or(EstadoPosicao::Flat);
-    int tamanho = (estadoAnterior == EstadoPosicao::Flat) ? 0 : 1;
-    std::printf("estado inicial: %s (tamanho assumido: %d)\n", nomeEstado(estadoAnterior), tamanho);
+    int posicaoAnterior = classificar(capBadge, cal).value_or(0);
+    std::printf("posicao inicial: %s\n", nomePosicao(posicaoAnterior).c_str());
 
     std::printf("\nModo DEBUG -- NAO manda nenhum atalho, so' escreve no bloco de notas.\n");
     std::printf("Pode operar manualmente na conta de origem agora. CTRL+C pra sair.\n");
 
     while (true) {
-        EstadoPosicao novo = aguardarProximoEstado(capBadge, capLetra, cal, origem);
+        int nova = aguardarProximaPosicao(capBadge, cal, origem);
 
-        for (const Evento& evento : transicao(estadoAnterior, novo)) {
-            atualizarTamanho(tamanho, evento);
+        for (const Evento& evento : transicao(posicaoAnterior, nova)) {
             const char* rotulo = rotuloDebug(evento);
 
             SYSTEMTIME st;
             GetLocalTime(&st);
             char linha[80];
-            std::snprintf(linha, sizeof(linha), "%02d:%02d:%02d.%03d %s (tam %d)",
-                          st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, rotulo, tamanho);
+            std::snprintf(linha, sizeof(linha), "%02d:%02d:%02d.%03d %s",
+                          st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, rotulo);
 
-            std::printf("[debug] %s -> %s : rotulo %s, comando %s, tamanho agora %d\n",
-                        nomeEstado(estadoAnterior), nomeEstado(novo), rotulo,
-                        nomeComando(evento.comando), tamanho);
+            std::printf("[debug] %s -> %s : rotulo %s, comando %s\n",
+                        nomePosicao(posicaoAnterior).c_str(), nomePosicao(nova).c_str(), rotulo,
+                        nomeComando(evento.comando));
 
             if (!escreverLinha(blocoDeNotas, linha)) {
                 std::fprintf(stderr, "[debug] falha ao escrever no bloco de notas (a janela ainda esta aberta?)\n");
             }
         }
-        estadoAnterior = novo;
+        posicaoAnterior = nova;
     }
 }
 
@@ -252,43 +236,40 @@ int modoRodar() {
     std::printf("tamanho maximo de posicao antes de parar o envio automatico: %d\n", tamanhoMaximo);
 
     CapturaRegiao capBadge(cal.regiaoBadge);
-    CapturaRegiao capLetra(cal.regiaoLetra);
-    if (!capBadge.capturar() || !capLetra.capturar()) {
-        std::fprintf(stderr, "ERRO: falha ao capturar as regioes calibradas. Recalibre.\n");
+    if (!capBadge.capturar()) {
+        std::fprintf(stderr, "ERRO: falha ao capturar a regiao calibrada. Recalibre.\n");
         return 1;
     }
-    auto estadoInicial = classificar(capBadge, capLetra, cal);
-    EstadoPosicao estadoAnterior = estadoInicial.value_or(EstadoPosicao::Flat);
-    int tamanho = (estadoAnterior == EstadoPosicao::Flat) ? 0 : 1;
-    std::printf("estado inicial: %s (tamanho assumido: %d)\n", nomeEstado(estadoAnterior), tamanho);
+    int posicaoAnterior = classificar(capBadge, cal).value_or(0);
+    std::printf("posicao inicial: %s\n", nomePosicao(posicaoAnterior).c_str());
     std::printf("\nRodando. Feche a janela de teste (ou CTRL+C aqui) pra sair.\n");
 
     // leitura + envio automatico rodam numa thread separada -- a thread
     // principal fica livre pra bombear mensagens da janela de teste
     // (Compra/Venda/Zerar), que manda o atalho manualmente a qualquer
     // momento, sem interromper a leitura.
-    std::thread threadLeitura([&capBadge, &capLetra, &cal, origem, destino, estadoAnterior, tamanho, tamanhoMaximo]() mutable {
+    std::thread threadLeitura([&capBadge, &cal, origem, destino, posicaoAnterior, tamanhoMaximo]() mutable {
         while (true) {
-            EstadoPosicao novo = aguardarProximoEstado(capBadge, capLetra, cal, origem);
+            int nova = aguardarProximaPosicao(capBadge, cal, origem);
 
-            for (const Evento& evento : transicao(estadoAnterior, novo)) {
-                atualizarTamanho(tamanho, evento);
+            for (const Evento& evento : transicao(posicaoAnterior, nova)) {
                 char tecla = (evento.comando == Comando::Compra) ? 'C' : (evento.comando == Comando::Venda) ? 'V' : 'A';
-                std::printf("[sinal] %s -> %s : comando %s (ALT+%c), tamanho agora %d\n",
-                            nomeEstado(estadoAnterior), nomeEstado(novo), nomeComando(evento.comando), tecla, tamanho);
+                std::printf("[sinal] %s -> %s : comando %s (ALT+%c)\n",
+                            nomePosicao(posicaoAnterior).c_str(), nomePosicao(nova).c_str(),
+                            nomeComando(evento.comando), tecla);
 
-                if (tamanho > tamanhoMaximo) {
+                if (std::abs(nova) > tamanhoMaximo) {
                     std::printf("\n!!! TRAVA DE SEGURANCA !!! tamanho (%d) passou do maximo (%d) --\n"
-                                "envio automatico PARADO (provavel loop: origem e destino reagindo\n"
-                                "um ao outro). Os botoes da janela de teste continuam funcionando\n"
-                                "pra voce zerar manualmente. Reinicie o \"rodar\" depois de conferir.\n\n",
-                                tamanho, tamanhoMaximo);
+                                "envio automatico PARADO (provavel loop ou leitura errada). Os\n"
+                                "botoes da janela de teste continuam funcionando pra voce zerar\n"
+                                "manualmente. Reinicie o \"rodar\" depois de conferir.\n\n",
+                                std::abs(nova), tamanhoMaximo);
                     return;
                 }
 
                 enviarAltTeclaComEspacamento(destino, tecla);
             }
-            estadoAnterior = novo;
+            posicaoAnterior = nova;
         }
     });
     threadLeitura.detach();

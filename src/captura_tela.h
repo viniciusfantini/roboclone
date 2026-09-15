@@ -15,10 +15,13 @@
 // quando a posicao de fato zerou, nao importa quantas execucoes levou.
 //
 // Por que comparacao de bitmap (nao so' cor media): o badge de comprado e
-// o de vendido podem ter o MESMO fundo, so' mudando a letra (C/V) -- cor
-// media do retangulo inteiro pode nao distinguir. Comparar o bitmap
-// inteiro (pixel a pixel) contra 3 referencias calibradas (vazio/compra/
-// venda) pega a forma da letra, nao so' a cor.
+// o de vendido podem ter o MESMO fundo, so' mudando o numero/letra -- cor
+// media do retangulo inteiro nao distingue. Comparar o bitmap inteiro
+// (pixel a pixel, soma de diferencas absolutas) contra uma referencia POR
+// QUANTIDADE EXATA (vazio, 1..N comprado, 1..N vendido -- ver config.h)
+// pega a forma certa de cada digito/letra, e de quebra permite detectar
+// REDUCAO parcial (ex.: 7C -> 6C), nao so' reforco -- mudanca de design
+// de 15/09/2026, ver sinal.h.
 #pragma once
 
 #include <windows.h>

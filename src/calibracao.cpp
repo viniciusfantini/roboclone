@@ -4,8 +4,12 @@
 #include <cstdio>
 #include <algorithm>
 #include <cstdlib>
+#include <iostream>
+#include <string>
 
 namespace {
+
+constexpr int NIVEL_MAXIMO_PADRAO = 5;
 
 RegiaoTela regiaoDeDoisPontos(POINT a, POINT b) {
     RegiaoTela r;
@@ -23,6 +27,17 @@ long long diferencaEntre(const std::vector<BYTE>& a, const std::vector<BYTE>& b)
     return soma;
 }
 
+int perguntarNivelMaximo() {
+    std::printf("\nAte' quantos contratos calibrar de cada lado? (ex.: 5 calibra 1..5\n");
+    std::printf("comprado E 1..5 vendido). ENTER pra usar o padrao (%d): ", NIVEL_MAXIMO_PADRAO);
+    std::fflush(stdout);
+    std::string linha;
+    std::getline(std::cin, linha);
+    if (linha.empty()) return NIVEL_MAXIMO_PADRAO;
+    int valor = std::atoi(linha.c_str());
+    return valor > 0 ? valor : NIVEL_MAXIMO_PADRAO;
+}
+
 } // namespace
 
 bool rodarCalibracao(Calibracao& out) {
@@ -30,69 +45,78 @@ bool rodarCalibracao(Calibracao& out) {
     std::printf("Antes de comecar: deixe a janela do Profit aberta, mostrando o\n");
     std::printf("painel com o indicador de posicao \"Qtd\" (o badge tipo \"1C\"/\"2V\"\n");
     std::printf("-- ver imagem/boleta.png), do jeito que vai ficar durante o pregao.\n");
+    std::printf("Aponte SO' pro badge \"Qtd\" -- nao inclua campos vizinhos que mudam\n");
+    std::printf("sozinhos com o preco (ex.: \"Resultado\", \"Res. Aberto\"), senao\n");
+    std::printf("qualquer variacao de preco vira um falso reforco.\n");
 
-    POINT b1 = aguardarClique("canto SUPERIOR ESQUERDO do badge de posicao inteiro (numero + letra)");
+    POINT b1 = aguardarClique("canto SUPERIOR ESQUERDO do badge de posicao (numero + letra)");
     if (b1.x < 0 && b1.y < 0) return false;
-    POINT b2 = aguardarClique("canto INFERIOR DIREITO do badge inteiro");
+    POINT b2 = aguardarClique("canto INFERIOR DIREITO do badge");
     if (b2.x < 0 && b2.y < 0) return false;
     out.regiaoBadge = regiaoDeDoisPontos(b1, b2);
 
-    std::printf("\nAgora so' a LETRA (C ou V), sem o numero -- normalmente o\n");
-    std::printf("caractere mais a direita dentro do badge.\n");
+    int nivelMaximo = perguntarNivelMaximo();
 
-    POINT l1 = aguardarClique("canto SUPERIOR ESQUERDO da LETRA (C/V), sem pegar o numero");
-    if (l1.x < 0 && l1.y < 0) return false;
-    POINT l2 = aguardarClique("canto INFERIOR DIREITO da LETRA");
-    if (l2.x < 0 && l2.y < 0) return false;
-    out.regiaoLetra = regiaoDeDoisPontos(l1, l2);
+    CapturaRegiao cap(out.regiaoBadge);
+    out.referencias.clear();
 
-    CapturaRegiao capBadge(out.regiaoBadge);
-    CapturaRegiao capLetra(out.regiaoLetra);
-
-    std::printf("\nAgora vamos capturar as referencias. Isso PRECISA ser feito na\n");
-    std::printf("conta que vai ficar de fato flat/comprada/vendida nesses passos --\n");
-    std::printf("use a conta SIMULADORA pra nao correr risco nenhum.\n");
+    std::printf("\nAgora vamos construir a posicao 1 contrato de cada vez, dos dois\n");
+    std::printf("lados. Use a conta SIMULADORA -- isso faz operacao de verdade.\n");
 
     aguardarEnter("deixe a posicao ZERADA/FLAT agora");
-    if (!capBadge.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
-    out.refVazioBadge = capBadge.pixelsBrutos();
-    std::vector<BYTE> badgeVazio = out.refVazioBadge;
+    if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
+    out.referencias.push_back({0, cap.pixelsBrutos()});
 
-    aguardarEnter("compre 1 contrato a mercado (fique COMPRADO) e confirme quando o badge aparecer");
-    if (!capBadge.capturar() || !capLetra.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
-    std::vector<BYTE> badgeCompra = capBadge.pixelsBrutos();
-    out.refCompraLetra = capLetra.pixelsBrutos();
+    for (int i = 1; i <= nivelMaximo; ++i) {
+        char instrucao[160];
+        std::snprintf(instrucao, sizeof(instrucao),
+                      "compre mais 1 contrato a mercado (fique comprado, total %d) e confirme", i);
+        aguardarEnter(instrucao);
+        if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
+        out.referencias.push_back({i, cap.pixelsBrutos()});
+    }
 
-    aguardarEnter("zere e venda 1 contrato a mercado (fique VENDIDO) e confirme quando o badge aparecer");
-    if (!capBadge.capturar() || !capLetra.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
-    std::vector<BYTE> badgeVenda = capBadge.pixelsBrutos();
-    out.refVendaLetra = capLetra.pixelsBrutos();
+    aguardarEnter("zere a posicao de teste (fique FLAT de novo) e confirme");
+
+    for (int i = 1; i <= nivelMaximo; ++i) {
+        char instrucao[160];
+        std::snprintf(instrucao, sizeof(instrucao),
+                      "venda mais 1 contrato a mercado (fique vendido, total %d) e confirme", i);
+        aguardarEnter(instrucao);
+        if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
+        out.referencias.push_back({-i, cap.pixelsBrutos()});
+    }
 
     std::printf("\n>> pode zerar a posicao de teste agora, a calibracao ja capturou o que precisava.\n");
 
-    long long dVazioCompra = diferencaEntre(badgeVazio, badgeCompra);
-    long long dVazioVenda = diferencaEntre(badgeVazio, badgeVenda);
-    out.toleranciaVazio = std::min(dVazioCompra, dVazioVenda) / 3;
-
-    long long dLetras = diferencaEntre(out.refCompraLetra, out.refVendaLetra);
-    out.toleranciaLado = dLetras / 3;
+    // tolerancia = uma fracao da menor diferenca entre QUAISQUER duas
+    // referencias capturadas (as mais parecidas entre si, ex.: 3C vs 4C,
+    // sao o par mais critico) -- conservador o bastante pra nao confundir
+    // niveis vizinhos, generoso o bastante pra aguentar variacao pequena
+    // de rendering entre capturas.
+    long long menor = -1;
+    int idxA = -1, idxB = -1;
+    for (size_t i = 0; i < out.referencias.size(); ++i) {
+        for (size_t j = i + 1; j < out.referencias.size(); ++j) {
+            long long d = diferencaEntre(out.referencias[i].bitmap, out.referencias[j].bitmap);
+            if (menor < 0 || d < menor) { menor = d; idxA = out.referencias[i].quantidade; idxB = out.referencias[j].quantidade; }
+        }
+    }
+    out.tolerancia = menor / 3;
 
     std::printf("\n== Calibracao concluida ==\n");
     std::printf("regiao badge: x=%d y=%d %dx%d\n", out.regiaoBadge.x, out.regiaoBadge.y,
                 out.regiaoBadge.largura, out.regiaoBadge.altura);
-    std::printf("regiao letra: x=%d y=%d %dx%d\n", out.regiaoLetra.x, out.regiaoLetra.y,
-                out.regiaoLetra.largura, out.regiaoLetra.altura);
-    std::printf("diferenca badge vazio<->compra=%lld, vazio<->venda=%lld -> toleranciaVazio=%lld\n",
-                dVazioCompra, dVazioVenda, out.toleranciaVazio);
-    std::printf("diferenca letra compra<->venda=%lld -> toleranciaLado=%lld\n", dLetras, out.toleranciaLado);
+    std::printf("referencias capturadas: %zu (vazio + 1..%d comprado + 1..%d vendido)\n",
+                out.referencias.size(), nivelMaximo, nivelMaximo);
+    std::printf("par mais parecido: quantidade %d vs %d, diferenca=%lld -> tolerancia=%lld\n",
+                idxA, idxB, menor, out.tolerancia);
 
-    if (std::min(dVazioCompra, dVazioVenda) < 30) {
-        std::printf(">> AVISO: badge vazio ficou muito parecido com badge ocupado -- confira se\n"
-                    ">> apontou certo pro badge de posicao inteiro.\n");
-    }
-    if (dLetras < 30) {
-        std::printf(">> AVISO: a letra de compra ficou muito parecida com a de venda -- confira se\n"
-                    ">> a regiao da LETRA nao esta pegando o numero junto, ou se nao ficou torta.\n");
+    if (menor < 30) {
+        std::printf(">> AVISO: duas referencias ficaram muito parecidas entre si (quantidade %d e\n"
+                    ">> %d, diferenca=%lld) -- pode confundir esses dois niveis. Confira se apontou\n"
+                    ">> certo pro badge, ou recalibre se a leitura sair errada no modo debug.\n",
+                    idxA, idxB, menor);
     }
 
     return true;
