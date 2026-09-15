@@ -228,15 +228,15 @@ badge muda, as referências capturadas deixam de bater).
 refazer a construção toda — ver "reancorar rápido" abaixo, disponível no
 início do `debug` e do `rodar`.
 
-### Início de sessão: Replay agora + reancorar
+### Início de sessão: Replay agora + reancorar + modo de operação
 
-`debug` e `rodar` fazem duas coisas, logo depois de carregar a
-calibração — **uma vez só, no início**:
+`debug` e `rodar` perguntam, logo depois de carregar a calibração —
+**uma vez só, no início, decisão fixa pra sessão inteira**:
 
 1. **Se a calibração tem suporte a Replay**: "o Replay está ligado agora
    nessa janela?" — usada só pra interpretar corretamente o clique do
-   próximo passo, caso você reancore (não decide mais como ler pro resto
-   da sessão — ver "vigiando as duas posições" abaixo).
+   próximo passo, caso você reancore (pode ser diferente da resposta do
+   passo 3).
 2. **Confirmar/reancorar a posição**: útil se reabriu o Profit e a
    janela ficou em lugar diferente na tela — reaproveita as referências
    já calibradas (não refaz a construção 1..N contratos), só atualiza
@@ -261,21 +261,21 @@ calibração — **uma vez só, no início**:
    - Se não achou nada dentro da tolerância perto do clique, ou se você
      responder que a leitura não bate, mantém a posição calibrada antes
      e recomenda `calibrar` completo.
+3. **Se a calibração tem suporte a Replay**: "pra começar a ler agora:
+   você está na janela COM o Replay ligado, ou vai operar/debugar na
+   janela NORMAL (Replay desligado)?" — essa é a resposta que decide de
+   verdade a região de leitura usada no `debug`/`rodar` a partir daqui,
+   e vale pra **sessão inteira**. Responder "não" (janela normal)
+   desconta o deslocamento do Replay automaticamente.
 
-### Vigiando as duas posições (com e sem Replay) ao mesmo tempo
-
-**Achado ao vivo, 15/09/2026**: uma versão anterior perguntava "vai
-continuar com o Replay ligado, ou vai pra janela normal?" e fixava UMA
-posição pro resto da sessão. Não funcionava no uso real: o dono liga o
-`debug`/`rodar` ainda no Replay (antes do pregão, mais prático) e
-**desliga o Replay no meio da mesma sessão**, quando o mercado abre, sem
-reiniciar o programa — uma escolha fixa não aguenta essa troca.
-
-Corrigido: se a calibração tem suporte a Replay, `debug`/`rodar` vigiam
-as **duas posições possíveis** (com e sem Replay) ao mesmo tempo, e usam
-automaticamente qual delas bater com alguma referência. Não pergunta
-nem precisa saber em qual estado o Replay está — funciona ligando ou
-desligando a qualquer momento durante a sessão, inclusive no meio dela.
+**Se você trocar de janela no meio da sessão** (ex.: desligar o Replay
+enquanto o `debug`/`rodar` já está rodando), a leitura não acompanha
+sozinha — feche e abra de novo pra responder a pergunta 3 outra vez.
+(Achado ao vivo, 15/09/2026: uma tentativa de vigiar as duas posições —
+com e sem Replay — ao mesmo tempo, pra não precisar reiniciar, tinha um
+bug real: quando o Replay liga/desliga, as duas regiões mudam no mesmo
+instante, e só uma delas era conferida, perdendo a leitura da outra. Uma
+pergunta fixa é mais simples e previsível.)
 
 ### `debug` (usar antes do `rodar`, pra validar a leitura)
 

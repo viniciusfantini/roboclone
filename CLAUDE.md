@@ -363,6 +363,27 @@ do Replay (`rodarCalibracao`). Se nao achar nada dentro da tolerancia
 nem na vizinhanca inteira, avisa e mantem o estado anterior (nunca
 adota uma posicao ruim silenciosamente).
 
+**Revertido: pergunta fixa em vez de vigiar as duas posições
+(15/09/2026)**: dono testou de novo e reportou "não funcionou no debug
+quando tirei o replay" -- confirmando um bug real na tentativa anterior
+(vigiar as duas posicoes -- com e sem Replay -- ao mesmo tempo, sem
+perguntar): quando o Replay liga/desliga, as DUAS regioes mudam no mesmo
+instante (`mudouBase` e `mudouAlt` ambos true), mas o codigo so'
+verificava UMA delas (`mudouBase ? capBase_ : *capAlt_`), perdendo a
+transicao da outra pra sempre (o "mudou" e' consumido no proximo poll
+mesmo sem ter sido classificado). Dono pediu explicitamente pra voltar
+a perguntar no final, antes de comecar a ler: "esta' na janela com
+Replay ou nao" -- decisao FIXA pra sessao inteira, aceitando que trocar
+de janela no meio exige reiniciar o debug/rodar.
+
+Revertido: `prepararRegiaoDeLeitura()` volta a devolver `RegiaoTela` (a
+regiao ativa, ja' com o ajuste aplicado) em vez de `void`; a classe
+`LeitorPosicao` e `regiaoAlternativaReplay()` foram removidas; `main.cpp`
+volta a usar `CapturaRegiao` unica + a funcao livre
+`aguardarProximaPosicao()`. As melhorias independentes da sessao anterior
+(clique no centro do badge + busca local `buscarMelhorPosicao()`)
+continuam, nao foram afetadas por esse revert.
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

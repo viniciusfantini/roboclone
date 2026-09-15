@@ -347,13 +347,7 @@ bool rodarCalibracao(Calibracao& out) {
     return true;
 }
 
-RegiaoTela regiaoAlternativaReplay(const Calibracao& cal) {
-    RegiaoTela r = cal.regiaoBadge;
-    r.y += cal.calibradoComReplayLigado ? -cal.deslocamentoReplayY : cal.deslocamentoReplayY;
-    return r;
-}
-
-void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao) {
+RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao) {
     // pergunta "Replay esta' ligado AGORA?" so' pra interpretar certo o
     // clique do reancorar abaixo (pode ser conveniente reancorar vendo o
     // Replay, ex. mostrando "1C") -- nao decide mais o modo de operacao
@@ -412,11 +406,26 @@ void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibrac
         }
     }
 
+    // decisao final, no fim da configuracao, antes de comecar a ler de
+    // verdade: em qual janela vai operar/debugar A PARTIR DE AGORA?
+    // (achado ao vivo, 15/09/2026: uma tentativa anterior vigiava as
+    // duas posicoes -- com e sem Replay -- ao mesmo tempo pra nao
+    // precisar perguntar isso, mas tinha um bug real: quando o Replay
+    // liga/desliga, as DUAS regioes mudam no mesmo instante, e so' uma
+    // delas era conferida, perdendo a leitura da outra. Uma pergunta
+    // fixa aqui e' mais simples e previsivel -- se voce trocar de
+    // Replay pra janela normal no meio da sessao, reinicie o
+    // debug/rodar pra responder de novo.)
+    bool operarComReplay = replayAgora;
     if (cal.temReplay) {
-        std::printf(">> Replay tem deslocamento calibrado (%dpx) -- a leitura vai vigiar as\n"
-                    ">> DUAS posicoes possiveis (com e sem Replay) e usar automaticamente\n"
-                    ">> qual delas bater com alguma referencia. Pode ligar/desligar o\n"
-                    ">> Replay a qualquer momento durante a sessao, sem precisar reiniciar.\n",
-                    cal.deslocamentoReplayY);
+        operarComReplay = perguntarSimNao(
+            "Pra comecar a ler agora: voce esta' na janela COM o Replay ligado,\n"
+            "ou vai operar/debugar na janela NORMAL (Replay desligado)? Responda\n"
+            "nao pra janela normal (desconta o deslocamento sozinho)");
+        std::printf(">> lendo pela janela %s.\n", operarComReplay ? "COM Replay" : "NORMAL (sem Replay)");
     }
+
+    RegiaoTela regiaoAtiva = cal.regiaoBadge;
+    regiaoAtiva.y += ajusteReplay(operarComReplay, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
+    return regiaoAtiva;
 }

@@ -20,19 +20,15 @@ bool rodarCalibracao(Calibracao& out);
 // a leitura resultante bate com o que aparece na tela; opcionalmente
 // salva a atualizacao em 'caminhoCalibracao'.
 //
-// NAO decide mais "vai operar com Replay ligado ou desligado" -- achado
-// ao vivo, 15/09/2026: o dono liga o debug/rodar ainda no Replay (antes
-// do pregao) e desliga o Replay NO MEIO da mesma sessao (quando o
-// mercado abre), sem reiniciar o programa. Uma decisao fixa por sessao
-// nao aguenta isso. Em vez disso, main.cpp vigia as DUAS posicoes
-// possiveis (com e sem Replay, ver Calibracao::deslocamentoReplayY) ao
-// mesmo tempo e usa automaticamente qual delas bater com alguma
-// referencia -- funciona ligando/desligando o Replay a qualquer momento,
-// sem precisar perguntar nem saber em qual estado esta'.
-void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao);
-
-// a OUTRA posicao possivel do badge (a que nao e' cal.regiaoBadge) --
-// se calibradoComReplayLigado, regiaoBadge e' a posicao COM Replay e
-// isso devolve a posicao SEM; senao e' o contrario. So' faz sentido
-// chamar se cal.temReplay.
-RegiaoTela regiaoAlternativaReplay(const Calibracao& cal);
+// No final, se a calibracao tiver suporte a Replay, pergunta em qual
+// janela vai operar/debugar A PARTIR DE AGORA (com ou sem Replay) e
+// devolve a REGIAO A USAR pro resto da sessao (ja' com o deslocamento
+// aplicado, se for o caso). Essa decisao e' FIXA pra sessao inteira --
+// se trocar de janela no meio (ex.: desligar o Replay durante o
+// debug/rodar), reinicie o programa pra responder de novo (achado ao
+// vivo, 15/09/2026: uma tentativa de vigiar as duas posicoes ao mesmo
+// tempo, sem perguntar, tinha um bug real -- quando o Replay liga/
+// desliga as DUAS regioes mudam no mesmo instante, e so' uma delas era
+// conferida, perdendo a leitura da outra. Uma pergunta fixa e' mais
+// simples e previsivel).
+RegiaoTela prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibracao);
