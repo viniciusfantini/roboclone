@@ -148,6 +148,7 @@ bool carregarCalibracaoOuAvisar(Calibracao& cal) {
 
 int modoCalibrar() {
     Calibracao cal;
+    carregarCalibracao(cal, CAMINHO_CALIBRACAO); // ok falhar (ex.: 1a vez) -- cal fica vazia
     if (!rodarCalibracao(cal)) {
         std::printf("Calibracao cancelada, nada foi salvo.\n");
         return 1;

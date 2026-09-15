@@ -273,6 +273,17 @@ cobre os 4 casos (base com/sem Replay × agora com/sem Replay), tanto pra
 calcular a regiao ativa da sessao quanto pra normalizar a posicao
 reancorada de volta pra convencao da base.
 
+**Pular recalibração de badges se já existe uma (15/09/2026)**: dono
+pediu pra `calibrar` perguntar se quer recalibrar as badges (a
+construção 1..N) ou manter a que já está salva e pular pro próximo
+passo — útil pra só (re)medir o deslocamento do Replay sem repetir a
+construção toda. Implementado: `modoCalibrar()` agora tenta
+`carregarCalibracao()` antes de chamar `rodarCalibracao()`; se já tinha
+referências carregadas, pergunta antes de decidir se refaz os passos de
+clicar a região + construir 1..N, ou pula direto pra seção do Replay
+(reaproveitando `regiaoBadge`/`referencias`/`tolerancia`/
+`calibradoComReplayLigado` já carregados).
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

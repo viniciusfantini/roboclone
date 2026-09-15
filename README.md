@@ -152,6 +152,11 @@ roboclone.exe rodar
 
 ### `calibrar`
 
+0. **Se já existir uma calibração de badges salva**: pergunta se quer
+   RECALIBRAR as badges (refazer a construção 1..N) ou manter a que já
+   está salva e pular direto pro próximo passo (útil, por exemplo, pra só
+   medir/remedir o deslocamento do Replay sem refazer 1..N inteiro de
+   novo). Respondendo não, os passos 1-6 abaixo são pulados.
 1. Responde até quantos contratos calibrar de cada lado (ENTER usa o
    padrão, 5 — ou seja, reconhece de 1 a 5 comprado e de 1 a 5 vendido).
 1b. Responde se vai fazer a construção 1..N (próximos passos) com o modo
