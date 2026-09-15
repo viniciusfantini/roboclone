@@ -25,6 +25,25 @@ RegiaoTela regiaoDeDoisPontos(POINT a, POINT b) {
     return r;
 }
 
+// converte um clique no MEIO do badge pro retangulo (top-left based) que
+// CapturaRegiao precisa, dado o tamanho ja' conhecido. Usado em vez de
+// pedir o canto superior esquerdo pros cliques de reancorar/medir Replay
+// (achado 15/09/2026: acertar o CANTO exato de um badge pequeno, tipo
+// 16x13px, e' bem mais impreciso que acertar perto do meio -- a
+// tolerancia de comparacao de bitmap ja' cobre um erro pequeno de clique).
+RegiaoTela regiaoDoCentro(POINT centro, int largura, int altura) {
+    RegiaoTela r;
+    r.x = centro.x - largura / 2;
+    r.y = centro.y - altura / 2;
+    r.largura = largura;
+    r.altura = altura;
+    return r;
+}
+
+POINT centroDaRegiao(const RegiaoTela& r) {
+    return POINT{ r.x + r.largura / 2, r.y + r.altura / 2 };
+}
+
 long long diferencaEntre(const std::vector<BYTE>& a, const std::vector<BYTE>& b) {
     if (a.size() != b.size()) return 0;
     long long soma = 0;
@@ -115,6 +134,8 @@ bool rodarCalibracao(Calibracao& out) {
 
     POINT topoBadge{ out.regiaoBadge.x, out.regiaoBadge.y };
     bool comReplayAgora = out.calibradoComReplayLigado;
+    // (recalculado logo abaixo, depois que largura/altura estiverem
+    // certos -- ver uso mais adiante, na secao do Replay)
 
     if (recalibrarBadges) {
         std::printf("\nAntes de comecar: deixe a janela do Profit aberta, mostrando o\n");
@@ -228,15 +249,17 @@ bool rodarCalibracao(Calibracao& out) {
     //     Replay agora e mede quanto SOBE -- a base ja' e' a posicao
     //     deslocada, entao operar de verdade (Replay desligado) precisa
     //     DESCONTAR o deslocamento, nao somar (ver ajusteReplay acima).
+    POINT centroBadge = centroDaRegiao(RegiaoTela{topoBadge.x, topoBadge.y, out.regiaoBadge.largura, out.regiaoBadge.altura});
+
     if (comReplayAgora) {
         out.temReplay = true;
         aguardarEnter("desligue o modo Replay AGORA nessa janela (some a barra amarela) e confirme");
 
-        POINT novoTopo = aguardarClique(
-            "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay DESLIGADO "
+        POINT novoCentro = aguardarClique(
+            "o MEIO (centro) do badge de posicao, AGORA com o Replay DESLIGADO "
             "(deve estar mais alto que antes -- essa e' a posicao de operar de verdade)");
-        if (novoTopo.x < 0 && novoTopo.y < 0) { out.temReplay = false; return true; }
-        out.deslocamentoReplayY = (int)(topoBadge.y - novoTopo.y);
+        if (novoCentro.x < 0 && novoCentro.y < 0) { out.temReplay = false; return true; }
+        out.deslocamentoReplayY = (int)(centroBadge.y - novoCentro.y);
 
         std::printf(">> deslocamento medido: %d px (a calibracao principal foi feita com Replay\n"
                     ">> ligado -- operar de verdade vai DESCONTAR esse deslocamento sozinho)\n",
@@ -250,11 +273,11 @@ bool rodarCalibracao(Calibracao& out) {
         if (out.temReplay) {
             aguardarEnter("ligue o modo Replay AGORA nessa janela (a barra amarela deve aparecer) e confirme");
 
-            POINT novoTopo = aguardarClique(
-                "canto SUPERIOR ESQUERDO do badge de posicao, AGORA com o Replay ligado "
+            POINT novoCentro = aguardarClique(
+                "o MEIO (centro) do badge de posicao, AGORA com o Replay ligado "
                 "(deve estar mais baixo que antes)");
-            if (novoTopo.x < 0 && novoTopo.y < 0) { out.temReplay = false; return true; }
-            out.deslocamentoReplayY = (int)(novoTopo.y - topoBadge.y);
+            if (novoCentro.x < 0 && novoCentro.y < 0) { out.temReplay = false; return true; }
+            out.deslocamentoReplayY = (int)(novoCentro.y - centroBadge.y);
 
             std::printf(">> deslocamento medido: %d px\n", out.deslocamentoReplayY);
             std::printf(">> pode desligar o Replay agora.\n");
@@ -294,15 +317,13 @@ void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibrac
         "pode clicar mostrando um estado conhecido (ex. \"1C\") pra conferir");
 
     if (quer) {
-        POINT novoTopo = aguardarClique(
-            "canto SUPERIOR ESQUERDO do badge de posicao AGORA (o tamanho ja' esta' "
+        POINT novoCentro = aguardarClique(
+            "o MEIO (centro) do badge de posicao AGORA (o tamanho ja' esta' "
             "calibrado, so' a posicao pode ter mudado)");
-        if (novoTopo.x < 0 && novoTopo.y < 0) {
+        if (novoCentro.x < 0 && novoCentro.y < 0) {
             std::printf(">> cancelado, mantendo a posicao calibrada antes.\n");
         } else {
-            RegiaoTela regiaoClicada = cal.regiaoBadge;
-            regiaoClicada.x = novoTopo.x;
-            regiaoClicada.y = novoTopo.y;
+            RegiaoTela regiaoClicada = regiaoDoCentro(novoCentro, cal.regiaoBadge.largura, cal.regiaoBadge.altura);
 
             CapturaRegiao cap(regiaoClicada);
             if (!cap.capturar()) {
@@ -326,8 +347,8 @@ void prepararRegiaoDeLeitura(Calibracao& cal, const std::string& caminhoCalibrac
                     // original, ver Calibracao::calibradoComReplayLigado)
                     // antes de guardar.
                     int ajuste = ajusteReplay(replayAgora, cal.calibradoComReplayLigado, cal.deslocamentoReplayY);
-                    cal.regiaoBadge.x = novoTopo.x;
-                    cal.regiaoBadge.y = novoTopo.y - ajuste;
+                    POINT centroBase{ novoCentro.x, novoCentro.y - ajuste };
+                    cal.regiaoBadge = regiaoDoCentro(centroBase, cal.regiaoBadge.largura, cal.regiaoBadge.altura);
                     std::printf(">> posicao base atualizada pra essa sessao%s.\n",
                                 ajuste != 0 ? " (ajustado pro deslocamento do Replay)" : "");
 

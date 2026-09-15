@@ -327,6 +327,22 @@ precisar saber ou perguntar em qual estado o Replay está. Nova classe
 voltou a ser `void` -- só cuida do reancorar agora, não decide mais "modo
 de operação da sessão" (pergunta removida, ficou desnecessária).
 
+**Clique no CENTRO do badge, nao no canto (15/09/2026)**: dono pediu pra
+mudar o ponto de clique usado no reancorar e na medicao do deslocamento
+do Replay (com/sem Replay) do canto superior esquerdo pro MEIO do badge,
+com a tolerancia de comparacao ja existente cobrindo pequena imprecisao
+de clique -- acertar o canto exato de um badge pequeno (a calibracao
+dele tem so' 16x13px) e' bem mais impreciso que acertar perto do meio.
+
+Novas funcoes em `calibracao.cpp`: `regiaoDoCentro(centro, largura,
+altura)` (converte um clique no centro pro retangulo top-left que
+`CapturaRegiao` precisa) e `centroDaRegiao(RegiaoTela)` (o inverso, usado
+pra converter a regiao/topo ja conhecidos numa referencia de centro antes
+de comparar com um novo clique de centro). So' os cliques de 1 ponto
+(reancorar, medir deslocamento do Replay) mudaram -- a definicao inicial
+da regiao do badge continua pedindo 2 cantos (precisa dos 2 pra saber o
+tamanho).
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

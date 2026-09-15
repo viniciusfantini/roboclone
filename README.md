@@ -207,14 +207,17 @@ mais preciso pro badge.
    passo 1b:
    - **Se calibrou SEM Replay** (resposta padrão): pergunta se você às
      vezes usa o Replay. Se sim, pede pra ligar o Replay agora e clicar
-     o novo canto superior esquerdo do badge — mede quanto desce.
+     o **meio (centro)** do badge — mede quanto desce.
    - **Se calibrou COM Replay ligado** (passo 1b = sim): pede pra
-     **desligar** o Replay agora e clicar o novo canto superior esquerdo
-     — mede quanto sobe (é a mesma distância, só medida do lado
-     oposto).
+     **desligar** o Replay agora e clicar o meio do badge de novo —
+     mede quanto sobe (é a mesma distância, só medida do lado oposto).
    O deslocamento é sempre MEDIDO na sua tela (achado ao vivo,
    15/09/2026: mede 24px numa máquina, mas varia com DPI/tema, por isso
-   não é um número fixo no código).
+   não é um número fixo no código). Pede o **centro** do badge, não o
+   canto (achado ao vivo, 15/09/2026: acertar o canto exato de um badge
+   pequeno, tipo 16×13px, é bem mais impreciso que acertar perto do
+   meio — a tolerância de comparação de bitmap já cobre um erro pequeno
+   de clique).
 
 **Precisa recalibrar (a construção completa 1..N dos dois lados) se**: a
 janela do Profit for redimensionada, ou o zoom/tema mudar (o formato do
@@ -238,11 +241,13 @@ calibração — **uma vez só, no início**:
    já calibradas (não refaz a construção 1..N contratos), só atualiza
    onde olhar:
    - Responde "s".
-   - Clica só no canto superior esquerdo do badge (o tamanho já está
-     calibrado, não pede o canto inferior direito de novo) — se
-     respondeu "sim" na pergunta 1, pode clicar mostrando um estado que
-     não seja flat (ex. "1C" com o Replay ligado), pra conferir contra
-     um badge com conteúdo de verdade.
+   - Clica só no **meio (centro)** do badge (o tamanho já está
+     calibrado, não pede os dois cantos de novo) — pedir o centro em vez
+     do canto é de propósito (achado ao vivo, 15/09/2026: acertar o
+     canto exato de um badge pequeno é bem mais impreciso que acertar
+     perto do meio). Se respondeu "sim" na pergunta 1, pode clicar
+     mostrando um estado que não seja flat (ex. "1C" com o Replay
+     ligado), pra conferir contra um badge com conteúdo de verdade.
    - O programa mostra o que LERIA nessa nova posição e pergunta se bate
      com a tela.
    - Se sim, usa essa posição como referência BASE pro resto da sessão
