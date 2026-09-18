@@ -283,8 +283,7 @@ int modoRodar() {
             if (std::abs(nova) > tamanhoMaximo) {
                 std::printf("\n!!! TRAVA DE SEGURANCA !!! alavancagem (%d) passou do maximo (%d) --\n"
                             "mandando ZERAR no destino e pausando a copia automatica ate a\n"
-                            "ORIGEM voltar a ficar FLAT (provavel loop ou leitura errada; os\n"
-                            "botoes da janela de teste continuam funcionando manualmente).\n\n",
+                            "ORIGEM voltar a ficar FLAT.\n\n",
                             std::abs(nova), tamanhoMaximo);
                 enviarAltTeclaComEspacamento(destino, 'A');
                 pausado = true;

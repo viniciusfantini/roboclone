@@ -337,10 +337,12 @@ janelas são a mesma. Pra validar o ciclo completo (leitura + envio)
 de verdade, use duas janelas: uma só de origem (só você opera nela
 manualmente) e outra só de destino (só recebe atalho).
 
-Como rede de segurança pra esse (e qualquer outro) cenário de loop, o
-`rodar` pergunta uma **alavancagem (tamanho de posição) máxima** (ENTER
-usa o padrão, 5) — se o tamanho lido da origem passar disso (ex.: máximo
-6, chegou no nível 7), a trava **manda ZERAR no destino** e pausa a cópia
+Como rede de segurança pra esse cenário de loop — e também pra respeitar
+o caso normal em que a conta replicada (destino) tem um limite de
+contratos diferente (menor) do que a conta de sinal (origem) — o `rodar`
+pergunta uma **alavancagem (tamanho de posição) máxima** (ENTER usa o
+padrão, 5) — se o tamanho lido da origem passar disso (ex.: máximo 6,
+chegou no nível 7), a trava **manda ZERAR no destino** e pausa a cópia
 automática — a leitura continua rodando, mas ignora qualquer sinal novo
 da origem até ela **voltar a ficar FLAT de verdade**; só então a cópia
 normal retoma do zero. Enquanto pausado, avisa bem visível no console, e
