@@ -464,6 +464,21 @@ origemEsperada`, reaproveitando `janela_alvo.h`) -- se achar algo
 parecido numa janela diferente, rejeita e avisa em vez de aceitar
 silenciosamente.
 
+**Trava de segurança zera e pausa em vez de só parar (18/09/2026)**: dono
+vai recalibrar com 10 lotes e pediu que a trava de tamanho máximo de
+posição (chamou de "alavancagem máxima" -- ex.: máximo 6, nível 7)
+passasse a **zerar a posição no destino** e **pausar a cópia automática
+até a origem voltar a ficar FLAT de verdade**, em vez do comportamento
+anterior (só parava de mandar atalho, sem zerar nada e sem retomar
+sozinho depois). Implementado em `main.cpp`: a thread de leitura do
+`modoRodar()` ganhou um estado `pausado` -- ao detectar
+`abs(nova) > tamanhoMaximo`, manda `ALT+A` pro destino e liga `pausado`
+(sem processar a transição normal); enquanto pausado, só acompanha a
+posição real da origem (sem mandar nada) até ela ler `0` (FLAT), quando
+desliga `pausado` e a cópia normal retoma do zero. `perguntarTamanhoMaximoPosicao()`
+reformulada pra descrever esse comportamento (não é mais só "para de
+mandar atalho").
+
 ## Estado atual
 
 Protótipo funcional (15/09/2026): `roboclone.exe`

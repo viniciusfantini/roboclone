@@ -60,9 +60,10 @@ int perguntarDelayMs() {
 }
 
 int perguntarTamanhoMaximoPosicao() {
-    std::printf("\nTamanho maximo de posicao permitido antes de PARAR de mandar atalho\n");
-    std::printf("automatico (trava de seguranca contra loop -- ver README). ENTER pra\n");
-    std::printf("usar o padrao (%d): ", TAMANHO_MAXIMO_POSICAO_PADRAO);
+    std::printf("\nAlavancagem (tamanho de posicao) maxima permitida antes da trava de\n");
+    std::printf("seguranca agir (ex.: se por 6 aqui, ao chegar no nivel 7 ela ZERA a\n");
+    std::printf("posicao no destino e para de copiar ate' a ORIGEM voltar a ficar FLAT\n");
+    std::printf("de novo -- ver README). ENTER pra usar o padrao (%d): ", TAMANHO_MAXIMO_POSICAO_PADRAO);
     std::fflush(stdout);
     std::string linha;
     std::getline(std::cin, linha);
@@ -261,24 +262,41 @@ int modoRodar() {
     // (Compra/Venda/Zerar), que manda o atalho manualmente a qualquer
     // momento, sem interromper a leitura.
     std::thread threadLeitura([&capBadge, &cal, origem, destino, posicaoAnterior, tamanhoMaximo]() mutable {
+        // enquanto pausado==true, a copia automatica fica suspensa: so'
+        // acompanha a posicao real da ORIGEM (pra saber quando ela volta a
+        // FLAT), sem mandar nenhum atalho -- ate' a origem realmente
+        // zerar, quando a copia normal retoma do zero.
+        bool pausado = false;
+
         while (true) {
             int nova = aguardarProximaPosicao(capBadge, cal, origem);
+
+            if (pausado) {
+                if (nova == 0) {
+                    std::printf("[trava] origem voltou a FLAT -- retomando copia automatica.\n");
+                    pausado = false;
+                }
+                posicaoAnterior = nova;
+                continue;
+            }
+
+            if (std::abs(nova) > tamanhoMaximo) {
+                std::printf("\n!!! TRAVA DE SEGURANCA !!! alavancagem (%d) passou do maximo (%d) --\n"
+                            "mandando ZERAR no destino e pausando a copia automatica ate' a\n"
+                            "ORIGEM voltar a ficar FLAT (provavel loop ou leitura errada; os\n"
+                            "botoes da janela de teste continuam funcionando manualmente).\n\n",
+                            std::abs(nova), tamanhoMaximo);
+                enviarAltTeclaComEspacamento(destino, 'A');
+                pausado = true;
+                posicaoAnterior = nova;
+                continue;
+            }
 
             for (const Evento& evento : transicao(posicaoAnterior, nova)) {
                 char tecla = (evento.comando == Comando::Compra) ? 'C' : (evento.comando == Comando::Venda) ? 'V' : 'A';
                 std::printf("[sinal] %s -> %s : comando %s (ALT+%c)\n",
                             nomePosicao(posicaoAnterior).c_str(), nomePosicao(nova).c_str(),
                             nomeComando(evento.comando), tecla);
-
-                if (std::abs(nova) > tamanhoMaximo) {
-                    std::printf("\n!!! TRAVA DE SEGURANCA !!! tamanho (%d) passou do maximo (%d) --\n"
-                                "envio automatico PARADO (provavel loop ou leitura errada). Os\n"
-                                "botoes da janela de teste continuam funcionando pra voce zerar\n"
-                                "manualmente. Reinicie o \"rodar\" depois de conferir.\n\n",
-                                std::abs(nova), tamanhoMaximo);
-                    return;
-                }
-
                 enviarAltTeclaComEspacamento(destino, tecla);
             }
             posicaoAnterior = nova;

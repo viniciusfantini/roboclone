@@ -338,11 +338,14 @@ de verdade, use duas janelas: uma só de origem (só você opera nela
 manualmente) e outra só de destino (só recebe atalho).
 
 Como rede de segurança pra esse (e qualquer outro) cenário de loop, o
-`rodar` pergunta um **tamanho máximo de posição** (ENTER usa o padrão, 5)
-— se o contador interno passar disso, o envio automático **para**
-imediatamente (a leitura continua rodando, mas não manda mais atalho
-sozinho) e avisa bem visível no console. Os botões da janela de teste
-continuam funcionando normalmente pra você zerar manualmente.
+`rodar` pergunta uma **alavancagem (tamanho de posição) máxima** (ENTER
+usa o padrão, 5) — se o tamanho lido da origem passar disso (ex.: máximo
+6, chegou no nível 7), a trava **manda ZERAR no destino** e pausa a cópia
+automática — a leitura continua rodando, mas ignora qualquer sinal novo
+da origem até ela **voltar a ficar FLAT de verdade**; só então a cópia
+normal retoma do zero. Enquanto pausado, avisa bem visível no console, e
+os botões da janela de teste continuam funcionando normalmente pra você
+agir manualmente se quiser.
 
 ## Limitações conhecidas / próximos passos
 
