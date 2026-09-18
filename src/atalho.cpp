@@ -98,9 +98,9 @@ void enviarAltTeclaComFoco(HWND alvo, char tecla) {
 }
 
 void enviarAltTeclaComEspacamento(HWND alvo, char tecla) {
-    // espera o espacamento INTEIRO sempre, nao so' quando o envio anterior
+    // espera o espacamento INTEIRO sempre, nao so quando o envio anterior
     // foi recente -- vale tanto entre ordens em sequencia quanto do
-    // instante em que a leitura detectou a mudanca ate' o envio de
+    // instante em que a leitura detectou a mudanca ate o envio de
     // verdade (pedido do dono, 11/09/2026: testando com origem e destino
     // na MESMA janela do Profit, o espacamento precisa cobrir esse
     // caminho todo pra nao se confundir com o proprio efeito do envio).

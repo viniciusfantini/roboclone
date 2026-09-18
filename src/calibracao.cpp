@@ -49,7 +49,7 @@ long long diferencaEntre(const std::vector<BYTE>& a, const std::vector<BYTE>& b)
 }
 
 int perguntarNivelMaximo() {
-    std::printf("\nAte' quantos contratos calibrar de cada lado? (ex.: 5 calibra 1..5\n");
+    std::printf("\nAte quantos contratos calibrar de cada lado? (ex.: 5 calibra 1..5\n");
     std::printf("comprado E 1..5 vendido). ENTER pra usar o padrao (%d): ", NIVEL_MAXIMO_PADRAO);
     std::fflush(stdout);
     std::string linha;
@@ -79,7 +79,7 @@ std::string formatarQuantidade(int q) {
 // recaptura, sem precisar de ENTER. Devolve false se ESC for apertado
 // (cancela a calibracao).
 bool aguardarMudancaBadge(CapturaRegiao& cap, const std::string& instrucao) {
-    std::printf("\n>> %s\n>>   (deteccao automatica -- so' faca a operacao, sem precisar\n"
+    std::printf("\n>> %s\n>>   (deteccao automatica -- so faca a operacao, sem precisar\n"
                 ">>   confirmar aqui; ESC cancela)\n", instrucao.c_str());
     std::fflush(stdout);
 
@@ -120,12 +120,12 @@ std::vector<BYTE> extrairSubImagem(const std::vector<BYTE>& bufferGrande, int bu
 } // namespace
 
 // achado ao vivo, 15/09/2026: a 1a versao capturava a tela (BitBlt) UMA
-// VEZ POR POSICAO candidata -- pra um raio de 45px isso e' (2*45+1)^2 =
+// VEZ POR POSICAO candidata -- pra um raio de 45px isso e (2*45+1)^2 =
 // 8281 capturas separadas, cada uma com overhead de GDI (GetDC/
 // CreateCompatibleDC/CreateCompatibleBitmap), levando dezenas de
 // segundos e parecendo travado. Corrigido: captura a area de busca
-// INTEIRA de uma vez so' (1 BitBlt) e desliza a janela de comparacao
-// dentro desse buffer JA' EM MEMORIA -- so' memcpy + soma de diferencas,
+// INTEIRA de uma vez so (1 BitBlt) e desliza a janela de comparacao
+// dentro desse buffer JA EM MEMORIA -- so memcpy + soma de diferencas,
 // sem tocar a tela de novo. Termina em poucos milissegundos.
 ResultadoBusca buscarBadge(POINT centro, int largura, int altura,
                             const std::vector<ReferenciaBadge>& referencias, int raioPx) {
@@ -160,17 +160,17 @@ ResultadoBusca buscarBadge(POINT centro, int largura, int altura,
 bool rodarCalibracao(Calibracao& out) {
     std::printf("== Calibracao ==\n");
 
-    // se ja' existe uma calibracao de badges carregada (chamador tenta
+    // se ja existe uma calibracao de badges carregada (chamador tenta
     // carregar o arquivo salvo antes de chamar isso -- ver main.cpp),
-    // pergunta se quer refazer a construcao 1..N ou so' reaproveitar.
+    // pergunta se quer refazer a construcao 1..N ou so reaproveitar.
     bool jaTemBadges = !out.referencias.empty();
     bool recalibrarBadges = true;
     if (jaTemBadges) {
         char pergunta[256];
         std::snprintf(pergunta, sizeof(pergunta),
-                      "Ja' existe uma calibracao de badges salva (%zu referencias, regiao "
+                      "Ja existe uma calibracao de badges salva (%zu referencias, regiao "
                       "%dx%d). Quer RECALIBRAR as badges (refazer a construcao 1..N)? "
-                      "Respondendo nao, mantem o que ja' esta' calibrado",
+                      "Respondendo nao, mantem o que ja esta calibrado",
                       out.referencias.size(), out.regiaoBadge.largura, out.regiaoBadge.altura);
         recalibrarBadges = perguntarSimNao(pergunta);
     }
@@ -186,13 +186,13 @@ bool rodarCalibracao(Calibracao& out) {
 
     int nivelMaximo = perguntarNivelMaximo();
 
-    std::printf("\nAponte SO' pro badge \"Qtd\" -- nao inclua campos vizinhos que mudam\n");
+    std::printf("\nAponte SO pro badge \"Qtd\" -- nao inclua campos vizinhos que mudam\n");
     std::printf("sozinhos com o preco (ex.: \"Resultado\", \"Res. Aberto\"), senao\n");
     std::printf("qualquer variacao de preco vira uma leitura que nao bate com nada.\n");
     if (nivelMaximo >= 10) {
         std::printf("\n>> ATENCAO: o badge fica um pouco mais LARGO quando a quantidade\n"
                     ">> passa de 1 digito (10 em diante) -- achado ao vivo, 15/09/2026.\n"
-                    ">> A regiao que voce vai desenhar agora e' FIXA (nao redimensiona\n"
+                    ">> A regiao que voce vai desenhar agora e FIXA (nao redimensiona\n"
                     ">> sozinha depois), entao desenhe um pouco mais larga do que o\n"
                     ">> badge aparenta AGORA (provavelmente com 1 digito ou vazio), com\n"
                     ">> folga suficiente pra caber \"%dC\" sem cortar.\n", nivelMaximo);
@@ -210,8 +210,8 @@ bool rodarCalibracao(Calibracao& out) {
     std::printf("\nAgora vamos construir a posicao 1 contrato de cada vez, dos dois\n");
     std::printf("lados. Use a conta SIMULADORA -- isso faz operacao de verdade. A\n");
     std::printf("partir daqui o programa detecta sozinho quando voce faz cada\n");
-    std::printf("operacao -- so' o primeiro passo (ficar zerado) precisa de ENTER,\n");
-    std::printf("porque nao ha' \"mudanca\" pra esperar se voce ja' estiver flat.\n");
+    std::printf("operacao -- so o primeiro passo (ficar zerado) precisa de ENTER,\n");
+    std::printf("porque nao ha \"mudanca\" pra esperar se voce ja estiver flat.\n");
 
     aguardarEnter("deixe a posicao ZERADA/FLAT agora (o badge deve mostrar \"-\")");
     if (!cap.capturar()) { std::printf(">> falha ao capturar a tela.\n"); return false; }
@@ -271,15 +271,15 @@ bool rodarCalibracao(Calibracao& out) {
 }
 
 RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao, HWND origemEsperada) {
-    std::printf("\nLocalizando o badge de posicao automaticamente (so' dentro da janela de "
+    std::printf("\nLocalizando o badge de posicao automaticamente (so dentro da janela de "
                 "origem escolhida)...\n");
 
     auto pertenceAOrigem = [&](const RegiaoTela& r) {
         return janelaNoPonto(centroDaRegiao(r)) == origemEsperada;
     };
 
-    // 'achado' so' conta se estiver dentro da tolerancia de bitmap E
-    // pertencer fisicamente a' janela de ORIGEM escolhida (achado ao
+    // 'achado so conta se estiver dentro da tolerancia de bitmap E
+    // pertencer fisicamente a janela de ORIGEM escolhida (achado ao
     // vivo, 15/09/2026: com varias janelas do Profit abertas, uma busca
     // ampla sem checar isso podia achar o badge de OUTRA janela, lendo a
     // conta errada sem avisar).
@@ -296,8 +296,8 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
             std::printf(">> nao achei nada parecido perto da ultima posicao conhecida (num raio de\n"
                         ">> %dpx).\n", RAIO_BUSCA_AMPLA_PX);
         }
-        std::printf(">> Aponte aproximadamente onde o badge esta' agora, DENTRO da janela de\n"
-                    ">> origem -- nao precisa ser exato, so' perto.\n");
+        std::printf(">> Aponte aproximadamente onde o badge esta agora, DENTRO da janela de\n"
+                    ">> origem -- nao precisa ser exato, so perto.\n");
         POINT clique = aguardarClique("perto do badge de posicao (\"Qtd\") na janela de ORIGEM, AGORA");
         if (!(clique.x < 0 && clique.y < 0)) {
             achado = buscarBadge(clique, cal.regiaoBadge.largura, cal.regiaoBadge.altura,

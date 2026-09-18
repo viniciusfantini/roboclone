@@ -54,7 +54,7 @@ bool escreverLinha(HWND janela, const std::string& texto) {
     std::wstring textoAtual = atual ? atual : L"";
     if (atual) SysFreeString(atual);
 
-    std::wstring linha(texto.begin(), texto.end()); // rotulo e' sempre ASCII (C/V/CC/VV/Z + hora)
+    std::wstring linha(texto.begin(), texto.end()); // rotulo e sempre ASCII (C/V/CC/VV/Z + hora)
     std::wstring novo = textoAtual + linha + L"\r\n";
 
     BSTR bstrNovo = SysAllocString(novo.c_str());

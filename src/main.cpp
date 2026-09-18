@@ -13,10 +13,10 @@
 //                                notas, pra conferir a leitura antes de
 //                                confiar nela
 //   roboclone.exe rodar      -- roda de verdade (manda atalho de verdade)
-//   roboclone.exe testaratalho -- so' testa o envio do atalho numa janela
+//   roboclone.exe testaratalho -- so testa o envio do atalho numa janela
 //                                escolhida, sem calibracao nem leitura de
 //                                tela nenhuma (pra depurar se o ALT+C/V/A
-//                                esta' chegando de verdade no Profit)
+//                                esta chegando de verdade no Profit)
 #include <windows.h>
 #include <cstdio>
 #include <cstring>
@@ -62,7 +62,7 @@ int perguntarDelayMs() {
 int perguntarTamanhoMaximoPosicao() {
     std::printf("\nAlavancagem (tamanho de posicao) maxima permitida antes da trava de\n");
     std::printf("seguranca agir (ex.: se por 6 aqui, ao chegar no nivel 7 ela ZERA a\n");
-    std::printf("posicao no destino e para de copiar ate' a ORIGEM voltar a ficar FLAT\n");
+    std::printf("posicao no destino e para de copiar ate a ORIGEM voltar a ficar FLAT\n");
     std::printf("de novo -- ver README). ENTER pra usar o padrao (%d): ", TAMANHO_MAXIMO_POSICAO_PADRAO);
     std::fflush(stdout);
     std::string linha;
@@ -101,19 +101,19 @@ POINT centroRegiao(const RegiaoTela& r) {
     return POINT{ r.x + r.largura / 2, r.y + r.altura / 2 };
 }
 
-// bloqueia ate' detectar uma mudanca de posicao reconhecida (o badge
+// bloqueia ate detectar uma mudanca de posicao reconhecida (o badge
 // mudou E a nova aparencia bate com uma das referencias calibradas).
-// Avisa no console (sem travar) se a janela que esta' fisicamente
-// naquele pedaco de tela agora nao e' mais a janela de ORIGEM esperada
+// Avisa no console (sem travar) se a janela que esta fisicamente
+// naquele pedaco de tela agora nao e mais a janela de ORIGEM esperada
 // (ex.: a janela de destino ficou por cima -- sem essa checagem, leria o
 // badge errado, podendo criar um loop lendo as proprias ordens que
 // mandou), OU se o badge mudou mas nao bateu com nenhuma referencia
-// (ex.: passou do nivel maximo calibrado) -- so' ignora e continua
+// (ex.: passou do nivel maximo calibrado) -- so ignora e continua
 // esperando, NAO tenta relocalizar sozinho aqui (achado ao vivo,
 // 15/09/2026: relocalizar numa busca ampla pode achar por coincidencia
 // alguma posicao vizinha parecida com OUTRA referencia -- ex. "FLAT" --
 // e reportar uma mudanca de posicao que nao aconteceu de verdade. A
-// localizacao automatica ampla so' roda uma vez, no inicio da sessao,
+// localizacao automatica ampla so roda uma vez, no inicio da sessao,
 // ver localizarBadge() em calibracao.cpp).
 int aguardarProximaPosicao(CapturaRegiao& capBadge, const Calibracao& cal, HWND origemEsperada) {
     while (true) {
@@ -124,7 +124,7 @@ int aguardarProximaPosicao(CapturaRegiao& capBadge, const Calibracao& cal, HWND 
 
         HWND atual = janelaNoPonto(centroRegiao(capBadge.regiao()));
         if (atual != origemEsperada) {
-            std::printf("[aviso] a janela na regiao calibrada da origem NAO e' mais a janela de "
+            std::printf("[aviso] a janela na regiao calibrada da origem NAO e mais a janela de "
                         "origem esperada (HWND=%p) -- leitura ignorada. Confira se a janela de "
                         "destino nao ficou por cima.\n", (void*)atual);
             continue;
@@ -170,7 +170,7 @@ int modoDebug() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
 
-    HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera' lida)");
+    HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera lida)");
     if (!origem) {
         std::printf("Nenhuma janela escolhida, saindo.\n");
         return 1;
@@ -192,7 +192,7 @@ int modoDebug() {
     int posicaoAnterior = classificar(capBadge, cal).value_or(0);
     std::printf("posicao inicial: %s\n", nomePosicao(posicaoAnterior).c_str());
 
-    std::printf("\nModo DEBUG -- NAO manda nenhum atalho, so' escreve no bloco de notas.\n");
+    std::printf("\nModo DEBUG -- NAO manda nenhum atalho, so escreve no bloco de notas.\n");
     std::printf("Pode operar manualmente na conta de origem agora. CTRL+C pra sair.\n");
 
     while (true) {
@@ -223,7 +223,7 @@ int modoRodar() {
     Calibracao cal;
     if (!carregarCalibracaoOuAvisar(cal)) return 1;
 
-    HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera' lida)");
+    HWND origem = escolherJanelaPorClique("Profit da conta de ORIGEM (a que sera lida)");
     if (!origem) {
         std::printf("Nenhuma janela escolhida, saindo.\n");
         return 1;
@@ -262,9 +262,9 @@ int modoRodar() {
     // (Compra/Venda/Zerar), que manda o atalho manualmente a qualquer
     // momento, sem interromper a leitura.
     std::thread threadLeitura([&capBadge, &cal, origem, destino, posicaoAnterior, tamanhoMaximo]() mutable {
-        // enquanto pausado==true, a copia automatica fica suspensa: so'
+        // enquanto pausado==true, a copia automatica fica suspensa: so
         // acompanha a posicao real da ORIGEM (pra saber quando ela volta a
-        // FLAT), sem mandar nenhum atalho -- ate' a origem realmente
+        // FLAT), sem mandar nenhum atalho -- ate a origem realmente
         // zerar, quando a copia normal retoma do zero.
         bool pausado = false;
 
@@ -282,7 +282,7 @@ int modoRodar() {
 
             if (std::abs(nova) > tamanhoMaximo) {
                 std::printf("\n!!! TRAVA DE SEGURANCA !!! alavancagem (%d) passou do maximo (%d) --\n"
-                            "mandando ZERAR no destino e pausando a copia automatica ate' a\n"
+                            "mandando ZERAR no destino e pausando a copia automatica ate a\n"
                             "ORIGEM voltar a ficar FLAT (provavel loop ou leitura errada; os\n"
                             "botoes da janela de teste continuam funcionando manualmente).\n\n",
                             std::abs(nova), tamanhoMaximo);
@@ -316,7 +316,7 @@ int modoTestarAtalho() {
     }
 
     definirEspacamentoMinimoMs(perguntarDelayMs());
-    std::printf("espacamento minimo entre comandos (so' vale pro c/v/a, nao pro fc/fv/fa): %dms\n",
+    std::printf("espacamento minimo entre comandos (so vale pro c/v/a, nao pro fc/fv/fa): %dms\n",
                 espacamentoMinimoAtualMs());
 
     std::printf("\nDigite um comando e ENTER:\n");

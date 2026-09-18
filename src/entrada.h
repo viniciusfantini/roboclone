@@ -10,6 +10,6 @@
 POINT aguardarClique(const std::string& instrucao);
 
 // espera o operador apertar ENTER no console (usado quando o que importa
-// e' o ESTADO da conta no momento, nao um ponto na tela -- ex.: "fique
+// e o ESTADO da conta no momento, nao um ponto na tela -- ex.: "fique
 // flat e aperte ENTER").
 void aguardarEnter(const std::string& instrucao);

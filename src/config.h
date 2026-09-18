@@ -2,20 +2,20 @@
 // (ver imagem/boleta.png) e uma referencia de bitmap POR QUANTIDADE EXATA
 // (vazio=0, comprado 1..N=+1..+N, vendido 1..N=-1..-N).
 //
-// Mudanca de design (15/09/2026): antes eram so' 3 referencias (vazio/
-// compra-generico/venda-generico, comparando so' a LETRA pra nao se
+// Mudanca de design (15/09/2026): antes eram so 3 referencias (vazio/
+// compra-generico/venda-generico, comparando so a LETRA pra nao se
 // confundir com o digito mudando de forma). Agora, com uma referencia
 // exata por quantidade, comparar o BADGE INTEIRO funciona direto -- nao
 // precisa mais separar regiao da letra.
 //
 // Removido suporte especifico a modo Replay (15/09/2026, pedido do dono):
-// em vez de perguntar/medir/lembrar se o Replay esta' ligado, o programa
+// em vez de perguntar/medir/lembrar se o Replay esta ligado, o programa
 // agora LOCALIZA o badge sozinho procurando numa area ampla ao redor da
 // ultima posicao conhecida (ver calibracao::localizarBadge) -- a
-// referencia "vazio" (o "-" que aparece quando a posicao esta' flat) e'
-// so' mais uma referencia normal nessa busca, tao boa quanto qualquer
-// "1C"/"2V" pra achar onde o badge esta' agora, nao importa se foi o
-// Replay, o zoom ou so' a janela que deslocou tudo.
+// referencia "vazio" (o "-" que aparece quando a posicao esta flat) e
+// so mais uma referencia normal nessa busca, tao boa quanto qualquer
+// "1C"/"2V" pra achar onde o badge esta agora, nao importa se foi o
+// Replay, o zoom ou so a janela que deslocou tudo.
 #pragma once
 
 #include "captura_tela.h"

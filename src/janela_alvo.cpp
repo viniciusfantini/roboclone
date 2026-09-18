@@ -5,16 +5,16 @@
 
 namespace {
 
-// o Profit e' um app MDI (Multiple Document Interface): a janela que
-// realmente "e' a boleta/DOM" pro proposito do atalho de teclado e' a
+// o Profit e um app MDI (Multiple Document Interface): a janela que
+// realmente "e a boleta/DOM" pro proposito do atalho de teclado e a
 // JANELA-FILHA MDI (o painel dockado), nao o frame externo do aplicativo
-// inteiro. GetAncestor(GA_ROOT) sobe passando pelo MDIClient direto ate' o
-// frame de fora (ex.: "ProfitPro - 5.0.4.23 - Registrado") -- isso e'
+// inteiro. GetAncestor(GA_ROOT) sobe passando pelo MDIClient direto ate o
+// frame de fora (ex.: "ProfitPro - 5.0.4.23 - Registrado") -- isso e
 // provavelmente a causa do atalho nao fazer efeito: mandamos pro frame
 // errado, nao pro painel que o Profit considera "ativo" internamente.
 //
-// Em vez disso, sobe pela cadeia de pais so' ate' achar o filho direto de
-// uma janela de classe "MDIClient" -- esse filho e' a janela MDI real.
+// Em vez disso, sobe pela cadeia de pais so ate achar o filho direto de
+// uma janela de classe "MDIClient" -- esse filho e a janela MDI real.
 HWND acharJanelaMdiOuTopo(HWND clicado) {
     HWND atual = clicado;
     while (true) {
@@ -23,7 +23,7 @@ HWND acharJanelaMdiOuTopo(HWND clicado) {
         char classePai[64] = {0};
         GetClassNameA(pai, classePai, sizeof(classePai));
         if (std::strcmp(classePai, "MDIClient") == 0) {
-            return atual; // atual e' a janela-filha MDI -- o alvo certo
+            return atual; // atual e a janela-filha MDI -- o alvo certo
         }
         atual = pai;
     }

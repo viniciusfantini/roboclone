@@ -5,22 +5,22 @@
 // Por que nao UI Automation: testado ao vivo em 11/09/2026 contra o
 // ProfitPro 5.0.4.23 rodando na maquina do dono -- a grade/paineis de
 // negociacao sao controles Delphi customizados, sem filhos/patterns
-// acessiveis. So' da pra ler por pixel.
+// acessiveis. So da pra ler por pixel.
 //
 // Por que o indicador de posicao (badge "Qtd") em vez da grade Executadas:
-// o dono apontou (11/09/2026) que contar so' o LADO de cada execucao pode
+// o dono apontou (11/09/2026) que contar so o LADO de cada execucao pode
 // dessincronizar se uma saida sair como VARIAS execucoes parciais em vez
-// de uma so' do tamanho da posicao inteira. O badge de posicao mostra o
-// estado REAL e atual (comprado/vendido/zerado), entao so' fica "zerado"
+// de uma so do tamanho da posicao inteira. O badge de posicao mostra o
+// estado REAL e atual (comprado/vendido/zerado), entao so fica "zerado"
 // quando a posicao de fato zerou, nao importa quantas execucoes levou.
 //
-// Por que comparacao de bitmap (nao so' cor media): o badge de comprado e
-// o de vendido podem ter o MESMO fundo, so' mudando o numero/letra -- cor
+// Por que comparacao de bitmap (nao so cor media): o badge de comprado e
+// o de vendido podem ter o MESMO fundo, so mudando o numero/letra -- cor
 // media do retangulo inteiro nao distingue. Comparar o bitmap inteiro
 // (pixel a pixel, soma de diferencas absolutas) contra uma referencia POR
 // QUANTIDADE EXATA (vazio, 1..N comprado, 1..N vendido -- ver config.h)
 // pega a forma certa de cada digito/letra, e de quebra permite detectar
-// REDUCAO parcial (ex.: 7C -> 6C), nao so' reforco -- mudanca de design
+// REDUCAO parcial (ex.: 7C -> 6C), nao so reforco -- mudanca de design
 // de 15/09/2026, ver sinal.h.
 #pragma once
 
@@ -33,7 +33,7 @@ struct RegiaoTela {
 };
 
 // snapshot de pixels (BGRA, 4 bytes/pixel) de uma regiao da tela em
-// coordenadas de TELA (absolutas). Quem calibra e' responsavel por
+// coordenadas de TELA (absolutas). Quem calibra e responsavel por
 // recalcular x/y se a janela de origem se mover -- ver calibracao.h.
 class CapturaRegiao {
 public:

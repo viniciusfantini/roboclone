@@ -53,7 +53,7 @@ void rodarJanelaTeste(HWND destino) {
 
     // NAO topmost (achado ao vivo, 15/09/2026: com "always on top" essa
     // janela pode cair em cima do pedaco de tela calibrado da ORIGEM e
-    // travar a leitura pra sempre, ja' que nada consegue tampa-la de
+    // travar a leitura pra sempre, ja que nada consegue tampa-la de
     // volta). Posicao fixa no canto inferior direito da tela principal
     // (nao CW_USEDEFAULT) pra reduzir a chance de nascer em cima de
     // alguma janela do Profit -- se ainda assim sobrepuser, sem topmost
