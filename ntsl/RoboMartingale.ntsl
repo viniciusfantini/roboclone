@@ -1,0 +1,146 @@
+{ ============================================================================
+  RoboMartingale.ntsl
+
+  Robo NTSL (Profit Pro) para WINFUT (ou qualquer ativo em pontos):
+
+    - Entra a mercado, sempre que estiver flat.
+    - Sai com GAIN fixo de 50pts ou STOP fixo de 100pts (monitorados a
+      cada tick e fechados a mercado quando atingidos).
+    - GAIN: reseta a progressao pra 1 contrato, mantem o mesmo lado.
+    - STOP: triplica o tamanho do proximo lote (1 -> 3 -> 9 -> 27,
+      parando em 27 = nivel maximo 4) e INVERTE o lado (se perdeu
+      comprado, a proxima entrada e' vendida, e vice-versa). Ao
+      estourar o nivel maximo, repete 27 contratos ate' finalmente
+      ter um gain, quando volta pra 1.
+    - A progressao (nivel e lado) reseta pra 1 contrato a cada novo
+      dia de pregao, mesmo que o dia anterior tenha fechado no meio
+      de uma sequencia de stops.
+
+  AVISO IMPORTANTE (leia antes de rodar com dinheiro real):
+
+  1. Este arquivo NAO foi compilado nem testado contra o Profit Pro
+     (esta sessao nao tem acesso ao editor NTSL/compilador). A LOGICA
+     de progressao/estado foi revisada com cuidado, mas a SINTAXE e
+     os nomes exatos de funcao precisam ser conferidos no editor NTSL
+     (autocomplete/compilacao) antes de usar. Rode primeiro em
+     simulador/backtest.
+  2. De proposito, as saidas usam SellToClose/BuyToCover A MERCADO
+     (monitorando o preco a cada tick), em vez de ordens nativas de
+     limite/stop (SellToCloseLimit/SellToCloseStop ou equivalentes).
+     Os nomes exatos dessas funcoes de ordem casada variam e nao pude
+     confirmar aqui -- prefer'i usar so' as 4 funcoes de
+     compra/venda a mercado (BuyToOpen/SellShortToOpen/SellToClose/
+     BuyToCover), que tenho certeza que existem no NTSL. Se quiser
+     trocar por ordens LIMITE (gain) e STOP (stop) de verdade
+     descansando na B3 em vez de monitoradas por tick, confirme comigo
+     a assinatura exata dessas funcoes (o autocomplete do editor NTSL
+     mostra) que eu ajusto.
+  3. Para o monitoramento por tick funcionar com pontos apertados
+     (50/100pts), configure a execucao da estrategia como "a cada
+     tick" (nao "a cada fechamento de barra") nas propriedades da
+     estrategia no Profit Pro -- isso e' uma opcao de configuracao,
+     nao de codigo.
+  4. Progressao martingale multiplica risco rapido: no nivel 4 (27
+     contratos) um unico stop de 100pts custa muito mais do que 27
+     gains de 50pts conseguem recuperar rapido. So' compensa se a
+     taxa de acerto normal for bem mais alta que a de perda -- vale
+     testar em simulador antes de validar a expectativa matematica.
+============================================================================ }
+
+input
+    PontosGain(50);
+    PontosStop(100);
+    QuantidadeBase(1);
+    FatorMultiplicador(3);
+    NivelMaximo(4);        { 1, 3, 9, 27 = 4 niveis (3^0..3^3) }
+    LadoInicial(1);        { 1 = compra, -1 = venda; usado so' na 1a operacao do dia }
+
+var
+    Nivel(1);
+    LadoAtual(0);          { 0 = ainda nao definido, 1 = compra, -1 = venda }
+    DiaAtual(0);
+    PrecoEntrada(0.0);
+    QuantidadeAtual(0);
+    EntradaPendente(false);
+    ResultadoPendente(0);  { 0 = nenhum, 1 = gain, -1 = stop; setado no tick que fecha a posicao }
+    i(0);
+
+begin
+    { reseta a progressao a cada novo dia de pregao }
+    if Date <> DiaAtual then
+    begin
+        DiaAtual := Date;
+        Nivel := 1;
+        LadoAtual := 0;
+        EntradaPendente := false;
+        ResultadoPendente := 0;
+    end;
+
+    if HasPosition then
+    begin
+        EntradaPendente := false;
+
+        if LadoAtual = 1 then
+        begin
+            if Close >= PrecoEntrada + PontosGain then
+            begin
+                SellToClose(QuantidadeAtual);
+                ResultadoPendente := 1;
+            end
+            else if Close <= PrecoEntrada - PontosStop then
+            begin
+                SellToClose(QuantidadeAtual);
+                ResultadoPendente := -1;
+            end;
+        end
+        else if LadoAtual = -1 then
+        begin
+            if Close <= PrecoEntrada - PontosGain then
+            begin
+                BuyToCover(QuantidadeAtual);
+                ResultadoPendente := 1;
+            end
+            else if Close >= PrecoEntrada + PontosStop then
+            begin
+                BuyToCover(QuantidadeAtual);
+                ResultadoPendente := -1;
+            end;
+        end;
+    end
+    else
+    begin
+        { acabou de fechar a posicao (gain ou stop) -> atualiza a progressao
+          ANTES de decidir o tamanho/lado da proxima entrada }
+        if ResultadoPendente <> 0 then
+        begin
+            if ResultadoPendente = 1 then
+                Nivel := 1
+            else
+            begin
+                if Nivel < NivelMaximo then
+                    Nivel := Nivel + 1;
+                LadoAtual := -LadoAtual;
+            end;
+
+            ResultadoPendente := 0;
+        end;
+
+        if not EntradaPendente then
+        begin
+            if LadoAtual = 0 then
+                LadoAtual := LadoInicial;
+
+            QuantidadeAtual := QuantidadeBase;
+            for i := 2 to Nivel do
+                QuantidadeAtual := QuantidadeAtual * FatorMultiplicador;
+
+            if LadoAtual = 1 then
+                BuyToOpen(QuantidadeAtual)
+            else
+                SellShortToOpen(QuantidadeAtual);
+
+            PrecoEntrada := Close;
+            EntradaPendente := true;
+        end;
+    end;
+end;
