@@ -1,97 +1,99 @@
+// Robo martingale 1-3-9-27 (WINFUT / Profit Pro)
+// Entra a mercado; gain fixo com ordem limite; stop fixo monitorado
+// por tick e fechado a mercado. Stop triplica o proximo lote e
+// inverte o lado; gain reseta a progressao pra 1 mantendo o lado.
+// Progressao reseta a cada novo dia de pregao.
+
+input
+   PontosGain (50);
+   PontosStop (100);
+   QuantidadeBase (1);
+   FatorMultiplicador (3);
+   NivelMaximo (4);
+   LadoInicial (1);
+
+var
+   Nivel                 : integer;
+   LadoAtual             : integer;
+   DiaAtual              : integer;
+   QuantidadeAtual       : integer;
+   PosicaoAbertaAnterior : boolean;
+   StopAcionado          : boolean;
+   i                     : integer;
+
 begin
-    input
-        PontosGain(50);
-        PontosStop(100);
-        QuantidadeBase(1);
-        FatorMultiplicador(3);
-        NivelMaximo(4);
-        LadoInicial(1);
+   // reseta a progressao a cada novo dia de pregao
+   if (Date <> DiaAtual) then
+   begin
+      DiaAtual              := Date;
+      Nivel                 := 1;
+      LadoAtual             := 0;
+      PosicaoAbertaAnterior := false;
+      StopAcionado          := false;
+   end;
 
-    var
-        Nivel(1);
-        LadoAtual(0);
-        DiaAtual(0);
-        PrecoEntrada(0.0);
-        QuantidadeAtual(0);
-        EntradaPendente(false);
-        ResultadoPendente(0);
-        i(0);
+   // ==============================================
+   // GERENCIAMENTO DA POSICAO COMPRADA
+   // ==============================================
+   if (IsBought = true) then
+   begin
+      if (Close <= buyprice - PontosStop) then
+      begin
+         ClosePosition;
+         StopAcionado := true;
+      end
+      else
+         SellToCoverLimit(buyprice + PontosGain, BuyPositionQty);
 
-    // reseta a progressao a cada novo dia de pregao
-    if Date <> DiaAtual then
-    begin
-        DiaAtual := Date;
-        Nivel := 1;
-        LadoAtual := 0;
-        EntradaPendente := false;
-        ResultadoPendente := 0;
-    end;
+      PosicaoAbertaAnterior := true;
+   end
 
-    if HasPosition then
-    begin
-        EntradaPendente := false;
+   // ==============================================
+   // GERENCIAMENTO DA POSICAO VENDIDA
+   // ==============================================
+   else if (IsSold = true) then
+   begin
+      if (Close >= sellprice + PontosStop) then
+      begin
+         ClosePosition;
+         StopAcionado := true;
+      end
+      else
+         BuyToCoverLimit(sellprice - PontosGain, SellPositionQty);
 
-        if LadoAtual = 1 then
-        begin
-            if Close >= PrecoEntrada + PontosGain then
-            begin
-                SellToClose(QuantidadeAtual);
-                ResultadoPendente := 1;
-            end
-            else if Close <= PrecoEntrada - PontosStop then
-            begin
-                SellToClose(QuantidadeAtual);
-                ResultadoPendente := -1;
-            end;
-        end
-        else if LadoAtual = -1 then
-        begin
-            if Close <= PrecoEntrada - PontosGain then
-            begin
-                BuyToCover(QuantidadeAtual);
-                ResultadoPendente := 1;
-            end
-            else if Close >= PrecoEntrada + PontosStop then
-            begin
-                BuyToCover(QuantidadeAtual);
-                ResultadoPendente := -1;
-            end;
-        end;
-    end
-    else
-    begin
-        // acabou de fechar a posicao (gain ou stop) -> atualiza a progressao
-        // ANTES de decidir o tamanho/lado da proxima entrada
-        if ResultadoPendente <> 0 then
-        begin
-            if ResultadoPendente = 1 then
-                Nivel := 1
-            else
-            begin
-                if Nivel < NivelMaximo then
-                    Nivel := Nivel + 1;
-                LadoAtual := -LadoAtual;
-            end;
+      PosicaoAbertaAnterior := true;
+   end
 
-            ResultadoPendente := 0;
-        end;
+   // ==============================================
+   // FLAT: atualiza a progressao (se acabou de fechar) e entra
+   // ==============================================
+   else
+   begin
+      if (PosicaoAbertaAnterior = true) then
+      begin
+         if (StopAcionado = true) then
+         begin
+            if (Nivel < NivelMaximo) then
+               Nivel := Nivel + 1;
+            LadoAtual := -LadoAtual;
+         end
+         else
+            Nivel := 1;
 
-        if not EntradaPendente then
-        begin
-            if LadoAtual = 0 then
-                LadoAtual := LadoInicial;
+         StopAcionado          := false;
+         PosicaoAbertaAnterior := false;
+      end;
 
-            QuantidadeAtual := QuantidadeBase;
-            for i := 2 to Nivel do
-                QuantidadeAtual := QuantidadeAtual * FatorMultiplicador;
+      if (LadoAtual = 0) then
+         LadoAtual := LadoInicial;
 
-            if LadoAtual = 1 then
-                BuyToOpen(QuantidadeAtual)
-            else
-                SellShortToOpen(QuantidadeAtual);
+      QuantidadeAtual := QuantidadeBase;
+      for i := 2 to Nivel do
+         QuantidadeAtual := QuantidadeAtual * FatorMultiplicador;
 
-            PrecoEntrada := Close;
-            EntradaPendente := true;
-        end;
-    end;
+      if (LadoAtual = 1) then
+         BuyAtMarket(QuantidadeAtual)
+      else
+         SellShortAtMarket(QuantidadeAtual);
+   end;
 end;
