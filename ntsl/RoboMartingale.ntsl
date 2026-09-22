@@ -6,7 +6,10 @@
 // contratos, alem de inverter o lado. No nivel maximo, RepetirUltimoNivel
 // decide se repete o mesmo tamanho ate' o gain (true) ou desiste e volta
 // pro tamanho base (false). Gain reseta a progressao pra 1 mantendo o
-// lado. Progressao reseta a cada novo dia de pregao.
+// lado. Progressao reseta a cada novo dia de pregao. Plota em R$ (Plot1)
+// quanto ja' foi perdido na sequencia atual e (Plot2) quanto se perderia
+// a mais se a proxima entrada (no tamanho atual, incluindo repeticoes do
+// nivel maximo) tambem tomar stop.
 
 input
    PontosGain (50);
@@ -17,6 +20,7 @@ input
    NivelMaximo (4);
    RepetirUltimoNivel (true);
    LadoInicial (1);
+   ValorPorPonto (0.20);
 
 var
    Nivel                 : integer;
@@ -25,6 +29,8 @@ var
    QuantidadeAtual       : integer;
    PosicaoAbertaAnterior : boolean;
    StopAcionado          : boolean;
+   PerdaAcumuladaRS      : float;
+   PerdaProximoStopRS    : float;
 
 begin
    // reseta a progressao a cada novo dia de pregao
@@ -36,6 +42,7 @@ begin
       QuantidadeAtual       := QuantidadeBase;
       PosicaoAbertaAnterior := false;
       StopAcionado          := false;
+      PerdaAcumuladaRS      := 0;
    end;
 
    // ==============================================
@@ -46,7 +53,8 @@ begin
       if (Close <= buyprice - PontosStop) then
       begin
          ClosePosition;
-         StopAcionado := true;
+         StopAcionado     := true;
+         PerdaAcumuladaRS := PerdaAcumuladaRS + (PontosStop * BuyPositionQty * ValorPorPonto);
       end
       else
          SellToCoverLimit(buyprice + PontosGain, BuyPositionQty);
@@ -62,7 +70,8 @@ begin
       if (Close >= sellprice + PontosStop) then
       begin
          ClosePosition;
-         StopAcionado := true;
+         StopAcionado     := true;
+         PerdaAcumuladaRS := PerdaAcumuladaRS + (PontosStop * SellPositionQty * ValorPorPonto);
       end
       else
          BuyToCoverLimit(sellprice - PontosGain, SellPositionQty);
@@ -98,8 +107,9 @@ begin
          end
          else
          begin
-            Nivel := 1;
-            QuantidadeAtual := QuantidadeBase;
+            Nivel            := 1;
+            QuantidadeAtual  := QuantidadeBase;
+            PerdaAcumuladaRS := 0;
          end;
 
          StopAcionado          := false;
@@ -114,4 +124,10 @@ begin
       else
          SellShortAtMarket(QuantidadeAtual);
    end;
+
+   // exibe no grafico quanto ja' foi perdido (R$) na sequencia atual e
+   // quanto se perderia a mais se a operacao no tamanho atual tomar stop
+   PerdaProximoStopRS := QuantidadeAtual * PontosStop * ValorPorPonto;
+   Plot1(PerdaAcumuladaRS);
+   Plot2(PerdaProximoStopRS);
 end;
