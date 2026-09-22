@@ -3,8 +3,10 @@
 // por tick e fechado a mercado. Stop triplica o proximo lote E SOMA
 // IncrementoReforco (padrao 1) -- ex.: 1 -> 4 -> 13 -> 40 -- pra cada
 // reforco cobrir a perda anterior com uma sobra de "IncrementoReforco"
-// contratos, alem de inverter o lado. Gain reseta a progressao pra 1
-// mantendo o lado. Progressao reseta a cada novo dia de pregao.
+// contratos, alem de inverter o lado. No nivel maximo, RepetirUltimoNivel
+// decide se repete o mesmo tamanho ate' o gain (true) ou desiste e volta
+// pro tamanho base (false). Gain reseta a progressao pra 1 mantendo o
+// lado. Progressao reseta a cada novo dia de pregao.
 
 input
    PontosGain (50);
@@ -13,6 +15,7 @@ input
    FatorMultiplicador (3);
    IncrementoReforco (1);
    NivelMaximo (4);
+   RepetirUltimoNivel (true);
    LadoInicial (1);
 
 var
@@ -77,12 +80,20 @@ begin
          if (StopAcionado = true) then
          begin
             // so' cresce se ainda nao chegou no nivel maximo; no
-            // nivel maximo repete o mesmo QuantidadeAtual ate' o gain
+            // nivel maximo, RepetirUltimoNivel decide se continua
+            // repetindo o mesmo tamanho ate' o gain ou desiste e
+            // volta pro tamanho base
             if (Nivel < NivelMaximo) then
             begin
                Nivel := Nivel + 1;
                QuantidadeAtual := QuantidadeAtual * FatorMultiplicador + IncrementoReforco;
+            end
+            else if (RepetirUltimoNivel = false) then
+            begin
+               Nivel := 1;
+               QuantidadeAtual := QuantidadeBase;
             end;
+
             LadoAtual := -LadoAtual;
          end
          else
