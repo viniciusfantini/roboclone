@@ -1,14 +1,17 @@
 // Robo martingale 1-3-9-27 (WINFUT / Profit Pro)
 // Entra a mercado; gain fixo com ordem limite; stop fixo monitorado
-// por tick e fechado a mercado. Stop triplica o proximo lote e
-// inverte o lado; gain reseta a progressao pra 1 mantendo o lado.
-// Progressao reseta a cada novo dia de pregao.
+// por tick e fechado a mercado. Stop triplica o proximo lote E SOMA
+// IncrementoReforco (padrao 1) -- ex.: 1 -> 4 -> 13 -> 40 -- pra cada
+// reforco cobrir a perda anterior com uma sobra de "IncrementoReforco"
+// contratos, alem de inverter o lado. Gain reseta a progressao pra 1
+// mantendo o lado. Progressao reseta a cada novo dia de pregao.
 
 input
    PontosGain (50);
    PontosStop (100);
    QuantidadeBase (1);
    FatorMultiplicador (3);
+   IncrementoReforco (1);
    NivelMaximo (4);
    LadoInicial (1);
 
@@ -19,7 +22,6 @@ var
    QuantidadeAtual       : integer;
    PosicaoAbertaAnterior : boolean;
    StopAcionado          : boolean;
-   i                     : integer;
 
 begin
    // reseta a progressao a cada novo dia de pregao
@@ -28,6 +30,7 @@ begin
       DiaAtual              := Date;
       Nivel                 := 1;
       LadoAtual             := 0;
+      QuantidadeAtual       := QuantidadeBase;
       PosicaoAbertaAnterior := false;
       StopAcionado          := false;
    end;
@@ -73,12 +76,20 @@ begin
       begin
          if (StopAcionado = true) then
          begin
+            // so' cresce se ainda nao chegou no nivel maximo; no
+            // nivel maximo repete o mesmo QuantidadeAtual ate' o gain
             if (Nivel < NivelMaximo) then
+            begin
                Nivel := Nivel + 1;
+               QuantidadeAtual := QuantidadeAtual * FatorMultiplicador + IncrementoReforco;
+            end;
             LadoAtual := -LadoAtual;
          end
          else
+         begin
             Nivel := 1;
+            QuantidadeAtual := QuantidadeBase;
+         end;
 
          StopAcionado          := false;
          PosicaoAbertaAnterior := false;
@@ -86,10 +97,6 @@ begin
 
       if (LadoAtual = 0) then
          LadoAtual := LadoInicial;
-
-      QuantidadeAtual := QuantidadeBase;
-      for i := 2 to Nivel do
-         QuantidadeAtual := QuantidadeAtual * FatorMultiplicador;
 
       if (LadoAtual = 1) then
          BuyAtMarket(QuantidadeAtual)
