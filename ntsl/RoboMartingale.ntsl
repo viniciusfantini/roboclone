@@ -6,10 +6,18 @@
 // contratos, alem de inverter o lado. No nivel maximo, RepetirUltimoNivel
 // decide se repete o mesmo tamanho ate' o gain (true) ou desiste e volta
 // pro tamanho base (false). Gain reseta a progressao pra 1 mantendo o
-// lado. Progressao reseta a cada novo dia de pregao. Plota em R$ (Plot1)
-// quanto ja' foi perdido na sequencia atual e (Plot2) quanto se perderia
-// a mais se a proxima entrada (no tamanho atual, incluindo repeticoes do
-// nivel maximo) tambem tomar stop.
+// lado. Progressao reseta a cada novo dia de pregao.
+//
+// PERDA MAXIMA EM R$ (valores padrao: PontosStop=100, R$0,20/ponto,
+// tamanhos 1 -> 4 -> 13 -> 40):
+//   SEM repetir o nivel maximo (RepetirUltimoNivel = false): perde 4
+//   stops seguidos e desiste -> 20 + 80 + 260 + 800 = R$1.160.
+//   COM repetir o nivel maximo (RepetirUltimoNivel = true): os mesmos
+//   R$1.160 pra chegar no nivel 4, MAIS R$800 a cada repeticao enquanto
+//   nao sair um gain -- sem teto (2 repeticoes = R$1.960, 3 = R$2.760,
+//   e assim por diante). Se mudar PontosStop ou os fatores de
+//   progressao, a conta de cada nivel e' 100 * PontosStop * tamanho *
+//   valor_do_ponto_do_ativo.
 
 input
    PontosGain (50);
@@ -20,7 +28,6 @@ input
    NivelMaximo (4);
    RepetirUltimoNivel (true);
    LadoInicial (1);
-   ValorPorPonto (0.20);
 
 var
    Nivel                 : integer;
@@ -29,8 +36,6 @@ var
    QuantidadeAtual       : integer;
    PosicaoAbertaAnterior : boolean;
    StopAcionado          : boolean;
-   PerdaAcumuladaRS      : float;
-   PerdaProximoStopRS    : float;
 
 begin
    // reseta a progressao a cada novo dia de pregao
@@ -42,7 +47,6 @@ begin
       QuantidadeAtual       := QuantidadeBase;
       PosicaoAbertaAnterior := false;
       StopAcionado          := false;
-      PerdaAcumuladaRS      := 0;
    end;
 
    // ==============================================
@@ -53,8 +57,7 @@ begin
       if (Close <= buyprice - PontosStop) then
       begin
          ClosePosition;
-         StopAcionado     := true;
-         PerdaAcumuladaRS := PerdaAcumuladaRS + (PontosStop * BuyPositionQty * ValorPorPonto);
+         StopAcionado := true;
       end
       else
          SellToCoverLimit(buyprice + PontosGain, BuyPositionQty);
@@ -70,8 +73,7 @@ begin
       if (Close >= sellprice + PontosStop) then
       begin
          ClosePosition;
-         StopAcionado     := true;
-         PerdaAcumuladaRS := PerdaAcumuladaRS + (PontosStop * SellPositionQty * ValorPorPonto);
+         StopAcionado := true;
       end
       else
          BuyToCoverLimit(sellprice - PontosGain, SellPositionQty);
@@ -107,9 +109,8 @@ begin
          end
          else
          begin
-            Nivel            := 1;
-            QuantidadeAtual  := QuantidadeBase;
-            PerdaAcumuladaRS := 0;
+            Nivel := 1;
+            QuantidadeAtual := QuantidadeBase;
          end;
 
          StopAcionado          := false;
@@ -124,10 +125,4 @@ begin
       else
          SellShortAtMarket(QuantidadeAtual);
    end;
-
-   // exibe no grafico quanto ja' foi perdido (R$) na sequencia atual e
-   // quanto se perderia a mais se a operacao no tamanho atual tomar stop
-   PerdaProximoStopRS := QuantidadeAtual * PontosStop * ValorPorPonto;
-   Plot1(PerdaAcumuladaRS);
-   Plot2(PerdaProximoStopRS);
 end;
