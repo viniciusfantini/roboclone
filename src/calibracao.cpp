@@ -18,6 +18,11 @@ constexpr int NIVEL_MAXIMO_PADRAO = 5;
 constexpr int POLL_CALIBRACAO_MS = 50;
 constexpr int ACOMODAR_CALIBRACAO_MS = 300;
 constexpr int RAIO_BUSCA_AMPLA_PX = 45;   // vizinhanca ampla, pra localizar o badge sozinho
+// depois de um clique aproximado manual (usuario apontou), vale gastar um
+// raio bem maior -- achado ao vivo, 24/09/2026: se a janela do Profit foi
+// movida mais que 45px, mesmo clicando perto do badge de verdade a busca
+// automatica nao alcancava, e o programa desistia usando a posicao antiga.
+constexpr int RAIO_BUSCA_APOS_CLIQUE_PX = 150;
 
 RegiaoTela regiaoDeDoisPontos(POINT a, POINT b) {
     RegiaoTela r;
@@ -301,7 +306,7 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
         POINT clique = aguardarClique("perto do badge de posicao (\"Qtd\") na janela de ORIGEM, AGORA");
         if (!(clique.x < 0 && clique.y < 0)) {
             achado = buscarBadge(clique, cal.regiaoBadge.largura, cal.regiaoBadge.altura,
-                                  cal.referencias, RAIO_BUSCA_AMPLA_PX);
+                                  cal.referencias, RAIO_BUSCA_APOS_CLIQUE_PX);
             valido = achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && pertenceAOrigem(achado.regiao);
             if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && !valido) {
                 std::printf(">> o que achei perto desse clique tambem pertence a OUTRA janela --\n"
