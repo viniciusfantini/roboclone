@@ -23,6 +23,16 @@ constexpr int RAIO_BUSCA_AMPLA_PX = 45;   // vizinhanca ampla, pra localizar o b
 // movida mais que 45px, mesmo clicando perto do badge de verdade a busca
 // automatica nao alcancava, e o programa desistia usando a posicao antiga.
 constexpr int RAIO_BUSCA_APOS_CLIQUE_PX = 150;
+// achado ao vivo, 24/09/2026: a referencia FLAT ("-") tem muito menos
+// informacao visual que as numeradas (medido: 8 cores unicas / desvio
+// padrao ~45 contra 63-76 cores / desvio ~140 das referencias 1C..6C,
+// 1V..6V) -- entao qualquer ruido pequeno de renderizacao (janela
+// movida, sub-pixel) pesa proporcionalmente muito mais nela, e a
+// tolerancia global (calibrada a partir do par de referencias NUMERADAS
+// mais parecidas entre si) fica apertada demais pro "-", fazendo a busca
+// nao reconhecer nem a posicao certa. So' o "-" ganha uma tolerancia
+// mais generosa; a distincao entre niveis numerados continua apertada.
+constexpr long long FATOR_TOLERANCIA_VAZIO = 3;
 
 RegiaoTela regiaoDeDoisPontos(POINT a, POINT b) {
     RegiaoTela r;
@@ -283,6 +293,17 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
         return janelaNoPonto(centroDaRegiao(r)) == origemEsperada;
     };
 
+    // o "-" (flat) e' bem mais pobre em informacao visual que os niveis
+    // numerados (ver comentario de FATOR_TOLERANCIA_VAZIO acima) -- da'
+    // uma tolerancia mais generosa so' pra ele, senao ruido normal de
+    // renderizacao faz nem a posicao certa bater.
+    auto toleranciaEfetiva = [&](int quantidade) {
+        return quantidade == 0 ? cal.tolerancia * FATOR_TOLERANCIA_VAZIO : cal.tolerancia;
+    };
+    auto dentroDaTolerancia = [&](const ResultadoBusca& r) {
+        return r.diferenca >= 0 && r.diferenca <= toleranciaEfetiva(r.quantidade);
+    };
+
     // 'achado so conta se estiver dentro da tolerancia de bitmap E
     // pertencer fisicamente a janela de ORIGEM escolhida (achado ao
     // vivo, 15/09/2026: com varias janelas do Profit abertas, uma busca
@@ -291,10 +312,10 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
     POINT centro = centroDaRegiao(cal.regiaoBadge);
     ResultadoBusca achado = buscarBadge(centro, cal.regiaoBadge.largura, cal.regiaoBadge.altura,
                                          cal.referencias, RAIO_BUSCA_AMPLA_PX);
-    bool valido = achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && pertenceAOrigem(achado.regiao);
+    bool valido = dentroDaTolerancia(achado) && pertenceAOrigem(achado.regiao);
 
     if (!valido) {
-        if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia) {
+        if (dentroDaTolerancia(achado)) {
             std::printf(">> achei algo parecido perto da ultima posicao conhecida, mas pertence a\n"
                         ">> OUTRA janela, nao a de origem escolhida -- ignorado.\n");
         } else {
@@ -317,9 +338,9 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
 
             achado = buscarBadge(clique, cal.regiaoBadge.largura, cal.regiaoBadge.altura,
                                   cal.referencias, RAIO_BUSCA_APOS_CLIQUE_PX);
-            valido = achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && pertenceAOrigem(achado.regiao);
+            valido = dentroDaTolerancia(achado) && pertenceAOrigem(achado.regiao);
 
-            if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && !valido) {
+            if (dentroDaTolerancia(achado) && !valido) {
                 std::printf(">> o que achei perto desse clique pertence a OUTRA janela -- clique\n"
                             ">> bem em cima do badge, dentro da janela de origem certa.\n");
             } else if (!valido) {
@@ -337,8 +358,8 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
     }
 
     std::printf(">> achado: %s (diferenca=%lld, tolerancia=%lld) em x=%d y=%d\n",
-                formatarQuantidade(achado.quantidade).c_str(), achado.diferenca, cal.tolerancia,
-                achado.regiao.x, achado.regiao.y);
+                formatarQuantidade(achado.quantidade).c_str(), achado.diferenca,
+                toleranciaEfetiva(achado.quantidade), achado.regiao.x, achado.regiao.y);
 
     if (achado.regiao.x != cal.regiaoBadge.x || achado.regiao.y != cal.regiaoBadge.y) {
         cal.regiaoBadge = achado.regiao;
