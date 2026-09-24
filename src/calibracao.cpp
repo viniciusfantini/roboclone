@@ -301,24 +301,38 @@ RegiaoTela localizarBadge(Calibracao& cal, const std::string& caminhoCalibracao,
             std::printf(">> nao achei nada parecido perto da ultima posicao conhecida (num raio de\n"
                         ">> %dpx).\n", RAIO_BUSCA_AMPLA_PX);
         }
-        std::printf(">> Aponte aproximadamente onde o badge esta agora, DENTRO da janela de\n"
-                    ">> origem -- nao precisa ser exato, so perto.\n");
-        POINT clique = aguardarClique("perto do badge de posicao (\"Qtd\") na janela de ORIGEM, AGORA");
-        if (!(clique.x < 0 && clique.y < 0)) {
+
+        // fica pedindo clique e buscando de novo ate achar (ou o usuario
+        // cancelar com ESC) -- achado ao vivo, 24/09/2026: antes desistia
+        // depois de UMA tentativa de clique, e se essa unica tentativa
+        // tambem errasse por mais que o raio, caia direto na posicao
+        // antiga (errada) sem dar outra chance.
+        bool cancelado = false;
+        while (!valido && !cancelado) {
+            std::printf(">> Aponte aproximadamente onde o badge esta agora, DENTRO da janela de\n"
+                        ">> origem -- nao precisa ser exato, so perto (ESC cancela e usa a ultima\n"
+                        ">> posicao conhecida).\n");
+            POINT clique = aguardarClique("perto do badge de posicao (\"Qtd\") na janela de ORIGEM, AGORA");
+            if (clique.x < 0 && clique.y < 0) { cancelado = true; break; }
+
             achado = buscarBadge(clique, cal.regiaoBadge.largura, cal.regiaoBadge.altura,
                                   cal.referencias, RAIO_BUSCA_APOS_CLIQUE_PX);
             valido = achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && pertenceAOrigem(achado.regiao);
+
             if (achado.diferenca >= 0 && achado.diferenca <= cal.tolerancia && !valido) {
-                std::printf(">> o que achei perto desse clique tambem pertence a OUTRA janela --\n"
-                            ">> clique bem em cima do badge, dentro da janela de origem certa.\n");
+                std::printf(">> o que achei perto desse clique pertence a OUTRA janela -- clique\n"
+                            ">> bem em cima do badge, dentro da janela de origem certa.\n");
+            } else if (!valido) {
+                std::printf(">> ainda nao achei nada reconhecivel perto desse clique (raio de %dpx).\n",
+                            RAIO_BUSCA_APOS_CLIQUE_PX);
             }
         }
     }
 
     if (!valido) {
-        std::printf(">> AVISO: continuo sem achar nada reconhecivel na janela de origem -- vou\n"
-                    ">> usar a ultima posicao conhecida mesmo assim, mas provavelmente vai dar\n"
-                    ">> \"nao bateu com nada\" toda hora. Rode \"calibrar\" de novo se isso continuar.\n");
+        std::printf(">> AVISO: cancelado sem achar o badge -- vou usar a ultima posicao conhecida\n"
+                    ">> mesmo assim, mas provavelmente vai dar \"nao bateu com nada\" toda hora. Rode\n"
+                    ">> \"calibrar\" de novo se isso continuar.\n");
         return cal.regiaoBadge;
     }
 
